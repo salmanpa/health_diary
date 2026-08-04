@@ -58,7 +58,44 @@ CREATE TABLE IF NOT EXISTS sleep_entries (
     notes TEXT
 );
 
-CREATE VIEW IF NOT EXISTS daily_health_summary AS
+CREATE TABLE IF NOT EXISTS daily_food_bases (
+    id INTEGER PRIMARY KEY,
+    calendar_day_id INTEGER NOT NULL
+        REFERENCES calendar_days(id) ON DELETE CASCADE,
+    base_type TEXT NOT NULL
+        CHECK (base_type IN ('meat', 'chicken', 'fish')),
+    notes TEXT,
+    UNIQUE (calendar_day_id, base_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_food_bases_day
+    ON daily_food_bases(calendar_day_id);
+
+CREATE TABLE IF NOT EXISTS daily_ratings (
+    id INTEGER PRIMARY KEY,
+    calendar_day_id INTEGER NOT NULL UNIQUE
+        REFERENCES calendar_days(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY,
+    calendar_day_id INTEGER NOT NULL
+        REFERENCES calendar_days(id) ON DELETE CASCADE,
+    category TEXT NOT NULL
+        CHECK (category IN ('groceries', 'home', 'transport', 'other')),
+    amount_rub REAL NOT NULL CHECK (amount_rub >= 0),
+    notes TEXT,
+    UNIQUE (calendar_day_id, category)
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_day
+    ON expenses(calendar_day_id);
+
+DROP VIEW IF EXISTS daily_health_summary;
+
+CREATE VIEW daily_health_summary AS
 SELECT
     d.diary_date,
     ROUND(COALESCE(n.calories_kcal, 0), 1) AS calories_kcal,
@@ -70,6 +107,9 @@ SELECT
     ROUND(COALESCE(w.distance_km, 0), 2) AS distance_km,
     s.duration_minutes AS sleep_minutes,
     s.quality_score AS sleep_quality,
+    b.food_bases,
+    r.rating AS day_rating,
+    ROUND(COALESCE(e.expenses_rub, 0), 2) AS expenses_rub,
     d.notes
 FROM calendar_days AS d
 LEFT JOIN (
@@ -91,4 +131,15 @@ LEFT JOIN (
     FROM workouts
     GROUP BY calendar_day_id
 ) AS w ON w.calendar_day_id = d.id
-LEFT JOIN sleep_entries AS s ON s.calendar_day_id = d.id;
+LEFT JOIN sleep_entries AS s ON s.calendar_day_id = d.id
+LEFT JOIN (
+    SELECT calendar_day_id, GROUP_CONCAT(base_type, ', ') AS food_bases
+    FROM daily_food_bases
+    GROUP BY calendar_day_id
+) AS b ON b.calendar_day_id = d.id
+LEFT JOIN daily_ratings AS r ON r.calendar_day_id = d.id
+LEFT JOIN (
+    SELECT calendar_day_id, SUM(amount_rub) AS expenses_rub
+    FROM expenses
+    GROUP BY calendar_day_id
+) AS e ON e.calendar_day_id = d.id;

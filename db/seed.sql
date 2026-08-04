@@ -1,7 +1,10 @@
 PRAGMA foreign_keys = ON;
 
 INSERT INTO calendar_days (diary_date, notes)
-VALUES ('2026-08-04', 'Питание внесено по оценочным значениям; сон — 5,5 часа.')
+VALUES (
+    '2026-08-04',
+    'Питание внесено по оценочным значениям; сон — 5,5 часа; оценка и расходы внесены пользователем.'
+)
 ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
 
 INSERT INTO workouts (
@@ -163,3 +166,38 @@ WHERE diary_date = '2026-08-04'
         AND meal_type = 'dinner'
         AND food_name = 'Лосось; стручковая фасоль; салат с помидорами, огурцами, оливками и рукколой'
   );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Курица присутствует в блинчике и котлете по-киевски.'
+FROM calendar_days
+WHERE diary_date = '2026-08-04'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'fish', 'Рыба присутствует на ужин: лосось.'
+FROM calendar_days
+WHERE diary_date = '2026-08-04'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 4, 'Оценка дня пользователем: 4 из 5.'
+FROM calendar_days
+WHERE diary_date = '2026-08-04'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+WITH expense_data (category, amount_rub, notes) AS (
+    VALUES
+        ('groceries', 1050, 'Продукты'),
+        ('home', 200, 'Дом'),
+        ('transport', 800, 'Транспорт')
+)
+INSERT INTO expenses (calendar_day_id, category, amount_rub, notes)
+SELECT d.id, e.category, e.amount_rub, e.notes
+FROM calendar_days AS d
+CROSS JOIN expense_data AS e
+WHERE d.diary_date = '2026-08-04'
+ON CONFLICT (calendar_day_id, category) DO UPDATE SET
+    amount_rub = excluded.amount_rub,
+    notes = excluded.notes;
