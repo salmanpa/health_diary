@@ -71,6 +71,16 @@ CREATE TABLE IF NOT EXISTS daily_food_bases (
 CREATE INDEX IF NOT EXISTS idx_daily_food_bases_day
     ON daily_food_bases(calendar_day_id);
 
+CREATE TABLE IF NOT EXISTS chess_sessions (
+    id INTEGER PRIMARY KEY,
+    calendar_day_id INTEGER NOT NULL UNIQUE
+        REFERENCES calendar_days(id) ON DELETE CASCADE,
+    games_played INTEGER NOT NULL CHECK (games_played > 0),
+    wins INTEGER NOT NULL DEFAULT 0
+        CHECK (wins >= 0 AND wins <= games_played),
+    notes TEXT
+);
+
 CREATE TABLE IF NOT EXISTS daily_ratings (
     id INTEGER PRIMARY KEY,
     calendar_day_id INTEGER NOT NULL UNIQUE
@@ -105,6 +115,8 @@ SELECT
     COALESCE(w.workout_count, 0) AS workout_count,
     ROUND(COALESCE(w.workout_minutes, 0), 1) AS workout_minutes,
     ROUND(COALESCE(w.distance_km, 0), 2) AS distance_km,
+    COALESCE(c.games_played, 0) AS chess_games,
+    COALESCE(c.wins, 0) AS chess_wins,
     s.duration_minutes AS sleep_minutes,
     s.quality_score AS sleep_quality,
     b.food_bases,
@@ -131,6 +143,7 @@ LEFT JOIN (
     FROM workouts
     GROUP BY calendar_day_id
 ) AS w ON w.calendar_day_id = d.id
+LEFT JOIN chess_sessions AS c ON c.calendar_day_id = d.id
 LEFT JOIN sleep_entries AS s ON s.calendar_day_id = d.id
 LEFT JOIN (
     SELECT calendar_day_id, GROUP_CONCAT(base_type, ', ') AS food_bases
