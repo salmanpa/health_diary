@@ -321,3 +321,65 @@ SELECT id, 'fish', 'Рыба присутствует в сливочном ры
 FROM calendar_days
 WHERE diary_date = '2026-08-05'
 ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'dinner',
+    'Обжаренное филе; сыр маасдам; руккола с песто; томаты; зелёные оливки',
+    470,
+    595,
+    62.3,
+    33.1,
+    9.8,
+    'Середина оценки 520–700 ккал. По фото приняты: обжаренное филе около 150 г, маасдам около 50 г, руккола 70 г, томаты 150 г, зелёные оливки 35 г и песто 15 г. Для БЖУ филе использовано как куриное; вид мяса по фото не подтверждён. Главные неопределённости: вид и масса филе, масса сыра, масло при жарке и точное количество песто.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = 'Обжаренное филе; сыр маасдам; руккола с песто; томаты; зелёные оливки'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'snack',
+    'Яблоко; банан; нектарин',
+    440,
+    262,
+    3.3,
+    1.2,
+    67,
+    'Оценка для одного среднего яблока (около 180 г), банана без кожуры (около 118 г) и нектарина (около 140 г). Диапазон 220–310 ккал зависит от размера фруктов.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'snack'
+        AND food_name = 'Яблоко; банан; нектарин'
+  );
