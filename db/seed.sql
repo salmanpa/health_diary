@@ -402,6 +402,21 @@ ON CONFLICT (calendar_day_id) DO UPDATE SET
     wins = excluded.wins,
     notes = excluded.notes;
 
+INSERT INTO daily_ratings (
+    calendar_day_id,
+    rating,
+    notes
+)
+SELECT
+    id,
+    4,
+    'Оценка дня пользователем: 4 из 5.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
 INSERT INTO expenses (
     calendar_day_id,
     category,
