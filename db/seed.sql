@@ -205,7 +205,7 @@ ON CONFLICT (calendar_day_id, category) DO UPDATE SET
 INSERT INTO calendar_days (diary_date, notes)
 VALUES (
     '2026-08-05',
-    'Внесены сон, функционально-силовая тренировка и питание. Порции части блюд оценочные. Траты: 0 ₽; категория не указана.'
+    'Внесены сон, функционально-силовая тренировка и питание. Порции части блюд оценочные. Траты: 430 ₽ за напиток; категория не указана.'
 )
 ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
 
@@ -401,3 +401,24 @@ ON CONFLICT (calendar_day_id) DO UPDATE SET
     games_played = excluded.games_played,
     wins = excluded.wins,
     notes = excluded.notes;
+
+INSERT INTO expenses (
+    calendar_day_id,
+    category,
+    amount_rub,
+    notes
+)
+SELECT
+    id,
+    NULL,
+    430,
+    'Напиток; категория не указана пользователем.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM expenses
+      WHERE calendar_day_id = calendar_days.id
+        AND category IS NULL
+        AND notes = 'Напиток; категория не указана пользователем.'
+  );

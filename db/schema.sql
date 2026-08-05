@@ -93,8 +93,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY,
     calendar_day_id INTEGER NOT NULL
         REFERENCES calendar_days(id) ON DELETE CASCADE,
-    category TEXT NOT NULL
-        CHECK (category IN ('groceries', 'home', 'transport', 'other')),
+    category TEXT
+        CHECK (category IS NULL OR category IN ('groceries', 'home', 'transport', 'other')),
     amount_rub REAL NOT NULL CHECK (amount_rub >= 0),
     notes TEXT,
     UNIQUE (calendar_day_id, category)
