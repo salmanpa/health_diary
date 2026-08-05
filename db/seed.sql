@@ -201,3 +201,80 @@ WHERE d.diary_date = '2026-08-04'
 ON CONFLICT (calendar_day_id, category) DO UPDATE SET
     amount_rub = excluded.amount_rub,
     notes = excluded.notes;
+
+INSERT INTO calendar_days (diary_date, notes)
+VALUES (
+    '2026-08-05',
+    'Внесены сон, функционально-силовая тренировка и завтрак. Порции части блюд оценочные.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO workouts (
+    calendar_day_id,
+    workout_type,
+    duration_minutes,
+    calories_burned_kcal,
+    notes
+)
+SELECT
+    id,
+    'functional_strength_training',
+    48,
+    355,
+    'Функционально-силовая тренировка в зале; расход калорий указан пользователем.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'functional_strength_training'
+        AND duration_minutes = 48
+        AND calories_burned_kcal = 355
+  );
+
+INSERT INTO sleep_entries (
+    calendar_day_id,
+    duration_minutes,
+    notes
+)
+SELECT
+    id,
+    300,
+    'Продолжительность сна — 5 часов; время засыпания и пробуждения не указано.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'breakfast',
+    'Яичница из 1 яйца; салат из помидоров, огурцов и перца; скрэмбл со шпинатом и томатами; блинчик с яблоком; 2 мини-сосиски молочные',
+    540,
+    753,
+    31.8,
+    36.3,
+    50.6,
+    'Середина оценки 660–850 ккал. Скрэмбл: 150 г, по фото ценника 171,92 ккал, Б 8,36 г, Ж 7,13 г, У 2,82 г на 100 г (всего 258 ккал, Б 12,5 г, Ж 10,7 г, У 4,2 г). Для салата принята порция 250 г без заметной заправки; для блинчика с яблоком — около 90 г; для двух мини-сосисок — около 50 г. Главные неопределённости: масло в салате/яичнице, размер и рецепт блинчика, вес и состав сосисок. База питания не отмечена: вид мяса в молочных сосисках не указан.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = 'Яичница из 1 яйца; салат из помидоров, огурцов и перца; скрэмбл со шпинатом и томатами; блинчик с яблоком; 2 мини-сосиски молочные'
+  );
