@@ -278,3 +278,46 @@ WHERE diary_date = '2026-08-05'
         AND meal_type = 'breakfast'
         AND food_name = 'Яичница из 1 яйца; салат из помидоров, огурцов и перца; скрэмбл со шпинатом и томатами; блинчик с яблоком; 2 мини-сосиски молочные'
   );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'lunch',
+    'Сливочный рыбный суп; паста с курицей и шампиньонами; салат «Венеция»',
+    660,
+    743.6,
+    45.2,
+    42.3,
+    44.7,
+    'Середина оценки 640–850 ккал. По фото: суп около 300 г (на 100 г: Б 4,64 г, Ж 3,57 г, У 4,48 г; 68,8 ккал рассчитано по БЖУ); паста около 200 г (на 100 г: 175,68 ккал, Б 14,16 г, Ж 7,55 г, У 12,7 г); салат около 160 г (на 100 г: 116,2 ккал, Б 1,85 г, Ж 10,33 г, У 3,66 г). Диапазон зависит в основном от фактической глубины супа, массы пасты и количества масла/песто в салате.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'lunch'
+        AND food_name = 'Сливочный рыбный суп; паста с курицей и шампиньонами; салат «Венеция»'
+  );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Куриное филе присутствует в пасте с курицей и шампиньонами.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'fish', 'Рыба присутствует в сливочном рыбном супе: сайда и минтай.'
+FROM calendar_days
+WHERE diary_date = '2026-08-05'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
