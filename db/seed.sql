@@ -437,3 +437,160 @@ WHERE diary_date = '2026-08-05'
         AND category IS NULL
         AND notes = 'Напиток; категория не указана пользователем.'
   );
+
+INSERT INTO calendar_days (diary_date, notes)
+VALUES (
+    '2026-08-06',
+    'Внесены сон, бег и завтрак. Размеры порций и пищевая ценность завтрака оценены по описанию и фотографии.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO workouts (
+    calendar_day_id,
+    workout_type,
+    duration_minutes,
+    distance_km,
+    average_pace_seconds_per_km,
+    notes
+)
+SELECT
+    id,
+    'running',
+    30,
+    5.52,
+    326,
+    'Пробежка; средний темп около 5:26 мин/км рассчитан из указанной дистанции и времени. Время суток не указано.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'running'
+        AND duration_minutes = 30
+        AND distance_km = 5.52
+  );
+
+INSERT INTO sleep_entries (
+    calendar_day_id,
+    duration_minutes,
+    notes
+)
+SELECT
+    id,
+    360,
+    'Продолжительность сна — 6 часов; время засыпания, пробуждения и качество сна не указаны.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'breakfast',
+    '2 небольших варёных яйца',
+    88,
+    126,
+    11.1,
+    8.4,
+    0.6,
+    'Центральная оценка для двух небольших яиц: около 88 г съедобной части. Оценочный диапазон: 120–140 ккал; Б 10,5–12 г, Ж 8–9,5 г, У 0,5–1 г.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = '2 небольших варёных яйца'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'breakfast',
+    'Овощной салат без заправки с мини-моцареллой',
+    250,
+    145,
+    8.5,
+    7.8,
+    11,
+    'Пользователь подтвердил 3 шарика мини-моцареллы и помидор черри. По ним как масштабу диаметр миски оценён примерно в 17–18 см. Центральная оценка: около 210 г овощей (помидоры, включая 1 черри, огурец, сладкий перец и листовой салат) и 40 г моцареллы. Заправка не учитывалась согласно описанию пользователя. Диапазон общей массы 210–280 г; 115–180 ккал, Б 7–11 г, Ж 5,5–10,5 г, У 9–14 г. Основная неопределённость — глубина порции, точная масса шариков и возможное масло на поверхности моцареллы.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = 'Овощной салат без заправки с мини-моцареллой'
+  );
+
+UPDATE nutrition_entries
+SET
+    weight_g = 250,
+    calories_kcal = 145,
+    protein_g = 8.5,
+    fat_g = 7.8,
+    carbs_g = 11,
+    notes = 'Пользователь подтвердил 3 шарика мини-моцареллы и помидор черри. По ним как масштабу диаметр миски оценён примерно в 17–18 см. Центральная оценка: около 210 г овощей (помидоры, включая 1 черри, огурец, сладкий перец и листовой салат) и 40 г моцареллы. Заправка не учитывалась согласно описанию пользователя. Диапазон общей массы 210–280 г; 115–180 ккал, Б 7–11 г, Ж 5,5–10,5 г, У 9–14 г. Основная неопределённость — глубина порции, точная масса шариков и возможное масло на поверхности моцареллы.'
+WHERE calendar_day_id = (
+        SELECT id
+        FROM calendar_days
+        WHERE diary_date = '2026-08-06'
+    )
+  AND meal_type = 'breakfast'
+  AND food_name = 'Овощной салат без заправки с мини-моцареллой';
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'breakfast',
+    'Банан',
+    120,
+    107,
+    1.3,
+    0.4,
+    27.6,
+    'Центральная оценка для съедобной части около 120 г. По фотографии размер выглядит средним или крупным; диапазон 90–120 ккал, Б 1–1,5 г, Ж 0,3–0,5 г, У 23–31 г.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = 'Банан'
+  );
