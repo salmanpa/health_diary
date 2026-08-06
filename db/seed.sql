@@ -437,3 +437,47 @@ WHERE diary_date = '2026-08-05'
         AND category IS NULL
         AND notes = 'Напиток; категория не указана пользователем.'
   );
+
+INSERT INTO calendar_days (diary_date, notes)
+VALUES (
+    '2026-08-06',
+    'Внесён обед по фотографии; массы порций и итоговые калории и БЖУ оценочные.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id,
+    meal_type,
+    food_name,
+    weight_g,
+    calories_kcal,
+    protein_g,
+    fat_g,
+    carbs_g,
+    notes
+)
+SELECT
+    id,
+    'lunch',
+    'Макароны-ракушки; филе куриного бедра на пару; салат «Табуле» с запечёнными овощами; морковь и сельдерей',
+    620,
+    735,
+    42,
+    19,
+    97,
+    'Центральная оценка для макарон 220 г, куриного филе 120 г, табуле 180 г и овощных палочек 100 г. Ориентировочный диапазон всего обеда: 630–850 ккал; Б 36–49 г, Ж 15–25 г, У 82–112 г. Данные с карточек: куриное филе — 150 ккал, Б 21 г, Ж 6 г, У 1,5 г на 100 г; табуле — 107,1 ккал, Б 2,31 г, Ж 5,44 г, У 12,23 г на 100 г. Морковь и сельдерей указаны пользователем; заправка не видна. Основные источники неопределённости: фактическая масса и глубина порций, возможное масло в макаронах, количество масел в табуле и соотношение моркови и сельдерея. Уверенность средняя.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'lunch'
+        AND food_name = 'Макароны-ракушки; филе куриного бедра на пару; салат «Табуле» с запечёнными овощами; морковь и сельдерей'
+  );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Куриное филе бедра на пару присутствует в обеде.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
