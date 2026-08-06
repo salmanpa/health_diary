@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS chess_sessions (
     games_played INTEGER NOT NULL CHECK (games_played > 0),
     wins INTEGER NOT NULL DEFAULT 0
         CHECK (wins >= 0 AND wins <= games_played),
+    draws INTEGER NOT NULL DEFAULT 0
+        CHECK (draws >= 0 AND wins + draws <= games_played),
     notes TEXT
 );
 
@@ -117,6 +119,7 @@ SELECT
     ROUND(COALESCE(w.distance_km, 0), 2) AS distance_km,
     COALESCE(c.games_played, 0) AS chess_games,
     COALESCE(c.wins, 0) AS chess_wins,
+    COALESCE(c.draws, 0) AS chess_draws,
     s.duration_minutes AS sleep_minutes,
     s.quality_score AS sleep_quality,
     b.food_bases,

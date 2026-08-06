@@ -441,7 +441,7 @@ WHERE diary_date = '2026-08-05'
 INSERT INTO calendar_days (diary_date, notes)
 VALUES (
     '2026-08-06',
-    'Внесены сон, бег и завтрак. Размеры порций и пищевая ценность завтрака оценены по описанию и фотографии.'
+    'Внесены сон, бег, все перечисленные приёмы пищи, шахматы, пользовательская оценка дня и отсутствие расходов. Размеры порций, калории и БЖУ оценочные.'
 )
 ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
 
@@ -515,6 +515,92 @@ WHERE diary_date = '2026-08-06'
       WHERE calendar_day_id = calendar_days.id
         AND meal_type = 'breakfast'
         AND food_name = '2 небольших варёных яйца'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'lunch',
+    'Макароны-ракушки; филе куриного бедра на пару; салат «Табуле» с запечёнными овощами; морковь и сельдерей',
+    620, 735, 42, 19, 97,
+    'Центральная оценка для макарон 220 г, куриного филе 120 г, табуле 180 г и овощных палочек 100 г. Ориентировочный диапазон всего обеда: 630–850 ккал; Б 36–49 г, Ж 15–25 г, У 82–112 г. Данные с карточек: куриное филе — 150 ккал, Б 21 г, Ж 6 г, У 1,5 г на 100 г; табуле — 107,1 ккал, Б 2,31 г, Ж 5,44 г, У 12,23 г на 100 г. Морковь и сельдерей указаны пользователем; заправка не видна. Основные источники неопределённости: фактическая масса и глубина порций, возможное масло в макаронах, количество масла в табуле и соотношение моркови и сельдерея. Уверенность средняя.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'lunch'
+        AND food_name = 'Макароны-ракушки; филе куриного бедра на пару; салат «Табуле» с запечёнными овощами; морковь и сельдерей'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'snack', 'Яблоко; банан', 298, 200, 1.6, 0.8, 52,
+    'Центральная оценка для одного среднего яблока около 180 г и одного среднего банана без кожуры около 118 г. Ориентировочный диапазон 170–240 ккал зависит от размера фруктов.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'snack' AND food_name = 'Яблоко; банан'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'dinner',
+    'Лосось; руккола без заправки; стручковая фасоль; голубика',
+    635, 642, 50.5, 30.5, 41.6,
+    'Уточнено по фото. При допущении, что диаметр прозрачной обеденной тарелки около 26–28 см, центральная оценка: приготовленный кусок лосося 200 г (примерно 180–220 г), стручковая фасоль 200 г (примерно 170–230 г), руккола 60 г (примерно 45–80 г) и отдельно указанная голубика 175 г (150–200 г). Ориентировочно 540–750 ккал, Б 44–57 г, Ж 23–39 г, У 35–49 г. На лососе и фасоли виден блеск, поэтому в центральной оценке учтено около 5 г возможного масла; руккола учтена без заправки по сообщению пользователя. Главные неопределённости: реальный диаметр тарелки и глубина порций, масса и жирность лосося, а также количество масла при приготовлении.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = 'Лосось; руккола без заправки; стручковая фасоль; голубика'
+  );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Куриное филе бедра на пару присутствует в обеде.'
+FROM calendar_days WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'fish', 'Рыба присутствует на ужин: лосось.'
+FROM calendar_days WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO chess_sessions (calendar_day_id, games_played, wins, draws, notes)
+SELECT id, 1, 0, 1, 'Сыграна 1 партия: ничья (0 побед).'
+FROM calendar_days WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    games_played = excluded.games_played,
+    wins = excluded.wins,
+    draws = excluded.draws,
+    notes = excluded.notes;
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 4, 'Оценка дня пользователем: 4 из 5.'
+FROM calendar_days WHERE diary_date = '2026-08-06'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+INSERT INTO expenses (calendar_day_id, category, amount_rub, notes)
+SELECT id, NULL, 0, 'Расходы за день: 0 ₽; категория неприменима.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM expenses
+      WHERE calendar_day_id = calendar_days.id
+        AND category IS NULL
+        AND notes = 'Расходы за день: 0 ₽; категория неприменима.'
   );
 
 INSERT INTO nutrition_entries (
