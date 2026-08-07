@@ -836,3 +836,33 @@ SELECT id, 'chicken', 'Курица присутствует в обеде: ку
 FROM calendar_days
 WHERE diary_date = '2026-08-07'
 ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'dinner',
+    'Салат «Цезарь» с креветками и заправкой «Оливковое масло» из «Вкусно — и точка»',
+    230, 330, 17, 24, 16,
+    'Записано по описанию пользователя; точная масса порции и пищевая ценность с упаковки не предоставлены. Центральная оценка для одной ресторанной порции около 230 г, включая всю заправку: 330 ккал, Б 17 г, Ж 24 г, У 16 г. Ориентировочный диапазон: 200–260 г; 270–410 ккал, Б 14–21 г, Ж 18–32 г, У 11–23 г. Основные источники неопределённости — количество использованной масляной заправки, масса креветок, сыра и сухариков. Креветки не отмечены как база fish: схема учитывает только meat, chicken и fish, а креветки относятся к морепродуктам.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = 'Салат «Цезарь» с креветками и заправкой «Оливковое масло» из «Вкусно — и точка»'
+  );
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 5, 'Оценка дня пользователем: 5 из 5.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+UPDATE calendar_days
+SET notes = 'Внесены сон, утренняя пробежка, завтрак, обед, перекус и ужин по описанию и фотографиям пользователя. Порции, калории и БЖУ приёмов пищи оценочные; пользовательская оценка дня — 5 из 5.'
+WHERE diary_date = '2026-08-07';
