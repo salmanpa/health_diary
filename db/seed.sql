@@ -680,3 +680,101 @@ WHERE diary_date = '2026-08-06'
         AND meal_type = 'breakfast'
         AND food_name = 'Банан'
   );
+
+INSERT INTO calendar_days (diary_date, notes)
+VALUES (
+    '2026-08-07',
+    'Внесены утренний сон, пробежка и завтрак по описанию и фотографии пользователя. Порции, калории и БЖУ завтрака оценочные.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT
+    id,
+    330,
+    'Продолжительность сна — 5,5 часа; время засыпания, пробуждения и качество сна не указаны.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    notes = excluded.notes;
+
+INSERT INTO workouts (
+    calendar_day_id,
+    workout_type,
+    time_of_day,
+    duration_minutes,
+    distance_km,
+    average_pace_seconds_per_km,
+    notes
+)
+SELECT
+    id,
+    'running',
+    'morning',
+    31,
+    5.7,
+    326,
+    'Утренняя пробежка; средний темп около 5:26 мин/км рассчитан из указанных дистанции и времени.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'running'
+        AND time_of_day = 'morning'
+        AND duration_minutes = 31
+        AND distance_km = 5.7
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'breakfast', '2 варёных яйца', 100,
+    156, 12.6, 10.6, 1.1,
+    'На фотографии видны 2 варёных куриных яйца. Центральная оценка — 100 г съедобной части; ориентировочно 140–175 ккал, Б 11,5–14 г, Ж 9,5–12 г, У 0,8–1,3 г. Неопределённость связана с размером яиц.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = '2 варёных яйца'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'breakfast', 'Овощи без указанной заправки: помидор, сладкий перец, огурец и листья салата', 235,
+    43, 2.1, 0.5, 9,
+    'По описанию и фотографии: небольшой помидор, пара ломтиков сладкого перца, половина огурца и листья салата. Центральная оценка массы — 235 г (примерно 190–280 г); 35–55 ккал, Б 1,5–2,7 г, Ж 0,3–0,7 г, У 7–12 г. Заправка пользователем не указана и в расчёт не включена; главные неопределённости — глубина миски, размеры овощей и возможная заправка.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = 'Овощи без указанной заправки: помидор, сладкий перец, огурец и листья салата'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'breakfast', 'Банан', 140,
+    125, 1.5, 0.5, 32,
+    'На фотографии банан выглядит крупным. Центральная оценка — 140 г съедобной части (примерно 120–160 г); 105–145 ккал, Б 1,3–1,8 г, Ж 0,4–0,6 г, У 27–37 г. Неопределённость связана с фактическим размером и массой без кожуры.'
+FROM calendar_days
+WHERE diary_date = '2026-08-07'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'breakfast'
+        AND food_name = 'Банан'
+  );
