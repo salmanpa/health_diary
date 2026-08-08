@@ -35,6 +35,9 @@ def build_payload(database: Path) -> dict[str, object]:
                 s.workout_count,
                 s.workout_minutes,
                 s.distance_km,
+                s.workout_calories_kcal,
+                s.average_perceived_exertion,
+                s.intensity_record_count,
                 s.sleep_minutes,
                 s.sleep_quality,
                 s.food_bases,
@@ -44,6 +47,16 @@ def build_payload(database: Path) -> dict[str, object]:
                  WHERE n.calendar_day_id = d.id) AS nutrition_entry_count,
                 (SELECT COUNT(DISTINCT n.meal_type) FROM nutrition_entries AS n
                  WHERE n.calendar_day_id = d.id) AS meal_type_count,
+                (SELECT COUNT(*) FROM nutrition_entries AS n
+                 WHERE n.calendar_day_id = d.id
+                   AND n.calories_kcal > 0
+                   AND n.protein_g = 0
+                   AND n.fat_g = 0
+                   AND n.carbs_g = 0) AS incomplete_macro_entry_count,
+                (SELECT COUNT(*) FROM nutrition_entries AS n
+                 WHERE n.calendar_day_id = d.id
+                   AND (n.notes LIKE '%оцен%' OR n.notes LIKE '%предполож%'))
+                    AS estimated_nutrition_entry_count,
                 EXISTS(SELECT 1 FROM sleep_entries AS sl
                        WHERE sl.calendar_day_id = d.id) AS has_sleep,
                 EXISTS(SELECT 1 FROM workouts AS w
@@ -84,10 +97,15 @@ def build_payload(database: Path) -> dict[str, object]:
             SELECT
                 d.diary_date,
                 w.workout_type,
+                w.time_of_day,
                 w.duration_minutes,
                 w.distance_km,
                 w.average_pace_seconds_per_km,
-                w.calories_burned_kcal
+                w.calories_burned_kcal,
+                w.perceived_exertion,
+                w.average_heart_rate_bpm,
+                w.max_heart_rate_bpm,
+                w.notes
             FROM workouts AS w
             JOIN calendar_days AS d ON d.id = w.calendar_day_id
             ORDER BY d.diary_date, w.id

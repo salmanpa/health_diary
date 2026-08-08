@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS workouts (
         CHECK (average_pace_seconds_per_km IS NULL OR average_pace_seconds_per_km > 0),
     calories_burned_kcal REAL
         CHECK (calories_burned_kcal IS NULL OR calories_burned_kcal >= 0),
+    perceived_exertion INTEGER
+        CHECK (perceived_exertion IS NULL OR perceived_exertion BETWEEN 1 AND 10),
+    average_heart_rate_bpm INTEGER
+        CHECK (average_heart_rate_bpm IS NULL OR average_heart_rate_bpm BETWEEN 30 AND 240),
+    max_heart_rate_bpm INTEGER
+        CHECK (max_heart_rate_bpm IS NULL OR max_heart_rate_bpm BETWEEN 30 AND 250),
     notes TEXT
 );
 
@@ -120,6 +126,9 @@ SELECT
     COALESCE(w.workout_count, 0) AS workout_count,
     ROUND(COALESCE(w.workout_minutes, 0), 1) AS workout_minutes,
     ROUND(COALESCE(w.distance_km, 0), 2) AS distance_km,
+    ROUND(COALESCE(w.workout_calories_kcal, 0), 1) AS workout_calories_kcal,
+    w.average_perceived_exertion,
+    COALESCE(w.intensity_record_count, 0) AS intensity_record_count,
     COALESCE(c.games_played, 0) AS chess_games,
     COALESCE(c.wins, 0) AS chess_wins,
     COALESCE(c.draws, 0) AS chess_draws,
@@ -145,7 +154,12 @@ LEFT JOIN (
         calendar_day_id,
         COUNT(*) AS workout_count,
         SUM(duration_minutes) AS workout_minutes,
-        SUM(COALESCE(distance_km, 0)) AS distance_km
+        SUM(COALESCE(distance_km, 0)) AS distance_km,
+        SUM(COALESCE(calories_burned_kcal, 0)) AS workout_calories_kcal,
+        ROUND(AVG(perceived_exertion), 1) AS average_perceived_exertion,
+        SUM(CASE WHEN perceived_exertion IS NOT NULL
+                  OR average_heart_rate_bpm IS NOT NULL
+                 THEN 1 ELSE 0 END) AS intensity_record_count
     FROM workouts
     GROUP BY calendar_day_id
 ) AS w ON w.calendar_day_id = d.id
@@ -183,6 +197,9 @@ SELECT
     SUM(s.workout_count) AS workout_count,
     ROUND(SUM(s.workout_minutes), 1) AS workout_minutes,
     ROUND(SUM(s.distance_km), 2) AS distance_km,
+    ROUND(SUM(s.workout_calories_kcal), 1) AS workout_calories_kcal,
+    ROUND(AVG(s.average_perceived_exertion), 1) AS avg_perceived_exertion,
+    SUM(s.intensity_record_count) AS intensity_record_count,
     ROUND(AVG(s.day_rating), 2) AS avg_day_rating,
     ROUND(SUM(s.expenses_rub), 2) AS expenses_rub
 FROM calendar_days AS d

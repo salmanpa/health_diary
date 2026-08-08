@@ -5,16 +5,22 @@
   if (!payload || !Array.isArray(payload.daily)) {
     document.body.insertAdjacentHTML(
       "afterbegin",
-      '<div class="noscript">Нет данных. Запустите ./scripts/generate_dashboard.py.</div>'
+      '<div class="notice">Нет данных для аналитики. Снимок дашборда ещё не собран.</div>'
     );
     return;
   }
 
-  const mealNames = {
-    breakfast: "завтрак",
-    lunch: "обед",
-    dinner: "ужин",
-    snack: "перекус",
+  const COLORS = {
+    ink: "#1f2925",
+    muted: "#738079",
+    grid: "rgba(31,41,37,.11)",
+    green: "#1d7663",
+    greenSoft: "#9fcdbd",
+    blue: "#5278d7",
+    orange: "#e0774f",
+    yellow: "#d2a83f",
+    red: "#bd5b5b",
+    white: "#fbfcf8",
   };
 
   const workoutNames = {
@@ -22,406 +28,390 @@
     functional_strength_training: "Функционально-силовая",
   };
 
-  const baseNames = {
-    meat: "Мясо",
-    chicken: "Курица",
-    fish: "Рыба",
-  };
-
+  const baseNames = { meat: "Мясо", chicken: "Курица", fish: "Рыба" };
   const monthSelect = document.getElementById("monthSelect");
   let selectedMonth = payload.meta.months[payload.meta.months.length - 1];
   let currentDays = [];
 
-  function average(values) {
-    const numeric = values
+  function numeric(values) {
+    return values
       .filter((value) => value !== null && value !== undefined && value !== "")
-      .filter((value) => Number.isFinite(Number(value)))
-      .map(Number);
-    return numeric.length
-      ? numeric.reduce((sum, value) => sum + value, 0) / numeric.length
-      : null;
+      .map(Number)
+      .filter(Number.isFinite);
+  }
+
+  function average(values) {
+    const data = numeric(values);
+    return data.length ? data.reduce((total, value) => total + value, 0) / data.length : null;
   }
 
   function sum(values) {
-    return values.reduce((total, value) => total + (Number(value) || 0), 0);
+    return numeric(values).reduce((total, value) => total + value, 0);
   }
 
-  function round(value, precision = 0) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+  function format(value, digits = 0) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
     return new Intl.NumberFormat("ru-RU", {
-      maximumFractionDigits: precision,
-      minimumFractionDigits: precision,
+      maximumFractionDigits: digits,
+      minimumFractionDigits: digits,
     }).format(Number(value));
   }
 
   function formatHours(minutes) {
     if (minutes === null || minutes === undefined || !Number.isFinite(Number(minutes))) return "—";
-    const totalMinutes = Math.round(Number(minutes));
-    const hours = Math.floor(totalMinutes / 60);
-    const remainder = totalMinutes % 60;
+    const value = Math.round(Number(minutes));
+    const hours = Math.floor(value / 60);
+    const remainder = value % 60;
     return remainder ? `${hours} ч ${remainder} мин` : `${hours} ч`;
   }
 
-  function shortHours(minutes) {
-    if (minutes === null || minutes === undefined || !Number.isFinite(Number(minutes))) return "—";
-    const totalMinutes = Math.round(Number(minutes));
-    const hours = Math.floor(totalMinutes / 60);
-    const remainder = totalMinutes % 60;
-    return `${hours}:${String(remainder).padStart(2, "0")}`;
+  function formatPace(seconds) {
+    if (!Number(seconds)) return null;
+    const rounded = Math.round(Number(seconds));
+    return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}/км`;
   }
 
   function monthLabel(month) {
-    const date = new Date(`${month}-01T12:00:00`);
-    const value = new Intl.DateTimeFormat("ru-RU", {
-      month: "long",
-      year: "numeric",
-    }).format(date);
+    const value = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" })
+      .format(new Date(`${month}-01T12:00:00`));
     return value.charAt(0).toUpperCase() + value.slice(1);
   }
 
-  function dayLabel(dateString) {
-    return new Intl.DateTimeFormat("ru-RU", { weekday: "short" })
-      .format(new Date(`${dateString}T12:00:00`))
-      .replace(".", "");
+  function dateLabel(date, short = false) {
+    return new Intl.DateTimeFormat("ru-RU", short
+      ? { day: "2-digit", month: "2-digit" }
+      : { day: "numeric", month: "long" }
+    ).format(new Date(`${date}T12:00:00`));
   }
 
-  function calendarDateLabel(dateString) {
-    return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" })
-      .format(new Date(`${dateString}T12:00:00`));
+  function weekday(date) {
+    return new Intl.DateTimeFormat("ru-RU", { weekday: "short" })
+      .format(new Date(`${date}T12:00:00`)).replace(".", "");
   }
 
   function plural(number, forms) {
-    const absolute = Math.abs(number) % 100;
-    const last = absolute % 10;
-    if (absolute > 10 && absolute < 20) return forms[2];
-    if (last > 1 && last < 5) return forms[1];
+    const value = Math.abs(number) % 100;
+    const last = value % 10;
+    if (value > 10 && value < 20) return forms[2];
     if (last === 1) return forms[0];
+    if (last > 1 && last < 5) return forms[1];
     return forms[2];
   }
 
   function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value;
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  }
+
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
   }
 
   function daysForMonth() {
     return payload.daily.filter((day) => day.diary_date.startsWith(selectedMonth));
   }
 
-  function mealsForDate(date) {
-    return payload.meals.filter((meal) => meal.diary_date === date);
+  function workoutsForMonth() {
+    return payload.workouts.filter((item) => item.diary_date.startsWith(selectedMonth));
   }
 
-  function workoutsForMonth() {
-    return payload.workouts.filter((workout) => workout.diary_date.startsWith(selectedMonth));
+  function workoutsForDate(date) {
+    return payload.workouts.filter((item) => item.diary_date === date);
+  }
+
+  function completed(days) {
+    return days.filter((day) => day.status === "complete");
+  }
+
+  function intensityText(workouts) {
+    if (!workouts.length) return "—";
+    const labels = workouts.map((workout) => {
+      if (workout.perceived_exertion !== null && workout.perceived_exertion !== undefined) {
+        return `RPE ${format(workout.perceived_exertion)}/10`;
+      }
+      if (workout.average_heart_rate_bpm) return `ЧСС ${format(workout.average_heart_rate_bpm)}`;
+      return null;
+    }).filter(Boolean);
+    return labels.length ? labels.join(" · ") : "не записана";
+  }
+
+  function workoutText(workouts) {
+    if (!workouts.length) return "нет записи";
+    return workouts.map((workout) => {
+      const parts = [workoutNames[workout.workout_type] || workout.workout_type];
+      if (workout.duration_minutes) parts.push(`${format(workout.duration_minutes)} мин`);
+      if (workout.distance_km) parts.push(`${format(workout.distance_km, 1)} км`);
+      return parts.join(" · ");
+    }).join("; ");
   }
 
   function renderHeader(days) {
-    const complete = days.filter((day) => day.status === "complete");
+    const full = completed(days);
     const latest = days[days.length - 1];
-    const completeSleep = complete.filter((day) => day.sleep_minutes !== null);
-    const sleepAverage = average(completeSleep.map((day) => day.sleep_minutes));
-    const allSleepAverage = average(days.map((day) => day.sleep_minutes));
-    const calorieAverage = average(complete.map((day) => day.calories_kcal));
-    const ratingAverage = average(days.map((day) => day.day_rating));
+    const calorieAverage = average(full.map((day) => day.calories_kcal));
+    const proteinAverage = average(full.map((day) => day.protein_g));
+    const fatAverage = average(full.map((day) => day.fat_g));
+    const carbsAverage = average(full.map((day) => day.carbs_g));
+    const sleepValues = days.filter((day) => day.has_sleep).map((day) => day.sleep_minutes);
+    const sleepAverage = average(sleepValues);
+    const workoutCount = sum(days.map((day) => day.workout_count));
     const workoutMinutes = sum(days.map((day) => day.workout_minutes));
     const distance = sum(days.map((day) => day.distance_km));
-    const workoutCount = sum(days.map((day) => day.workout_count));
+    const intensityRecords = sum(days.map((day) => day.intensity_record_count));
 
-    setText("trackedDays", days.length);
-    setText("completeDays", complete.length);
-    setText("sleepMetric", allSleepAverage === null ? "—" : shortHours(allSleepAverage));
-    const sleepRecords = days.filter((day) => day.has_sleep).length;
+    setText("periodLabel", monthLabel(selectedMonth));
+    setText("latestDate", latest ? dateLabel(latest.diary_date) : "—");
+    setText("footerFreshness", latest ? `В снимке данные по ${dateLabel(latest.diary_date)}` : "Нет записей");
+    setText("daysKpi", `${days.length} / ${full.length}`);
+    setText("daysMeta", `${days.length - full.length} ${plural(days.length - full.length, ["день заполняется", "дня заполняются", "дней заполняются"])}`);
+    setText("caloriesKpi", calorieAverage === null ? "—" : `${format(calorieAverage)} ккал`);
+    setText("macrosKpi", proteinAverage === null
+      ? "—"
+      : `${format(proteinAverage)} / ${format(fatAverage)} / ${format(carbsAverage)}`);
+    setText("sleepKpi", sleepAverage === null ? "—" : formatHours(sleepAverage));
+    setText("sleepMeta", `${sleepValues.length} ${plural(sleepValues.length, ["ночь", "ночи", "ночей"])} с данными`);
+    setText("trainingKpi", `${format(workoutMinutes)} мин`);
+    setText("trainingMeta", `${workoutCount} ${plural(workoutCount, ["тренировка", "тренировки", "тренировок"])} · ${format(distance, 1)} км`);
+    setText("intensityKpi", workoutCount ? `${intensityRecords} / ${workoutCount}` : "—");
+    setText("intensityMeta", workoutCount
+      ? "тренировок с RPE или ЧСС"
+      : "RPE или пульс");
+
+    const estimated = sum(days.map((day) => day.estimated_nutrition_entry_count));
+    const nutritionEntries = sum(days.map((day) => day.nutrition_entry_count));
+    const latestSuffix = latest && latest.status !== "complete"
+      ? ` ${dateLabel(latest.diary_date)} ещё заполняется.`
+      : "";
     setText(
-      "sleepMeta",
-      `среднее по ${sleepRecords} ${plural(sleepRecords, ["записи", "записям", "записям"])}`
+      "summaryText",
+      `${full.length} завершённых ${plural(full.length, ["день", "дня", "дней"])}; ${workoutCount} тренировок; ${estimated} из ${nutritionEntries} записей питания явно оценочные.${latestSuffix}`
     );
-    setText("calorieMetric", calorieAverage === null ? "—" : `${round(calorieAverage)} ккал`);
-    setText("trainingMetric", `${round(workoutMinutes)} мин`);
-    setText(
-      "trainingMeta",
-      `${workoutCount} ${plural(workoutCount, ["тренировка", "тренировки", "тренировок"])} · ${round(distance, 1)} км бега`
-    );
-    setText("ratingMetric", ratingAverage === null ? "—" : `${round(ratingAverage, 1)} / 5`);
-
-    if (sleepAverage !== null) {
-      setText("focusValue", shortHours(sleepAverage));
-      setText("focusLabel", "средний сон в завершённые дни");
-    } else {
-      setText("focusValue", `${days.length}`);
-      setText("focusLabel", "дней в первой выборке");
-    }
-
-    if (latest) {
-      setText(
-        "latestStatus",
-        latest.status === "complete"
-          ? `День за ${calendarDateLabel(latest.diary_date)} завершён`
-          : `День за ${calendarDateLabel(latest.diary_date)} ещё заполняется и исключён из дневных средних`
-      );
-      setText("dataFreshness", `Последняя запись: ${latest.diary_date}`);
-    }
-
-    const sampleText = complete.length < 14
-      ? "Выборка пока короткая: тренды — предварительные, но уже видно, где улучшить качество наблюдений."
-      : "Данных достаточно для первых устойчивых сравнений внутри месяца.";
-    setText("heroSummary", sampleText);
-
-    const latestSleep = latest && latest.sleep_minutes;
-    if (sleepAverage !== null && sleepAverage < 420) {
-      const recoveryNote = latestSleep >= 450
-        ? ` Последняя запись — ${formatHours(latestSleep)}, что похоже на компенсирующий более длинный сон.`
-        : "";
-      setText(
-        "primaryInsight",
-        `В завершённые дни средний сон — ${formatHours(sleepAverage)} при ${round(workoutMinutes)} минутах тренировок.${recoveryNote}`
-      );
-    } else {
-      setText(
-        "primaryInsight",
-        `За период записано ${workoutCount} ${plural(workoutCount, ["тренировка", "тренировки", "тренировок"])} и ${round(distance, 1)} км бега. Продолжаем собирать базовую линию.`
-      );
-    }
   }
 
-  function renderMacros(days) {
-    const complete = days.filter((day) => day.status === "complete");
-    const macros = [
-      { name: "Белки", value: average(complete.map((day) => day.protein_g)) },
-      { name: "Жиры", value: average(complete.map((day) => day.fat_g)) },
-      { name: "Углеводы", value: average(complete.map((day) => day.carbs_g)) },
+  function renderDailyTable(days) {
+    const body = document.getElementById("dailyTableBody");
+    body.replaceChildren();
+    [...days].reverse().forEach((day) => {
+      const workouts = workoutsForDate(day.diary_date);
+      const row = element("tr", day.status === "complete" ? "" : "is-in-progress");
+
+      const dateCell = element("td", "date-cell");
+      const date = element("strong", "", dateLabel(day.diary_date, true));
+      const state = element("span", "status-label", day.status === "complete" ? weekday(day.diary_date) : `${weekday(day.diary_date)} · частично`);
+      dateCell.append(date, state);
+      row.appendChild(dateCell);
+
+      const incompleteMacros = Number(day.incomplete_macro_entry_count) > 0;
+      const values = [
+        `${format(day.calories_kcal)} ккал`,
+        `${incompleteMacros ? "≥ " : ""}${format(day.protein_g, 1)} г`,
+        `${incompleteMacros ? "≥ " : ""}${format(day.fat_g, 1)} г`,
+        `${incompleteMacros ? "≥ " : ""}${format(day.carbs_g, 1)} г`,
+        day.has_sleep ? formatHours(day.sleep_minutes) : "нет записи",
+      ];
+      values.forEach((value, index) => {
+        const cell = element("td", index === 0 ? "value-strong" : "", value);
+        row.appendChild(cell);
+      });
+
+      const workoutCell = element("td", "workout-cell", workoutText(workouts));
+      const intensityCell = element("td", intensityText(workouts) === "не записана" ? "missing-cell" : "", intensityText(workouts));
+      const ratingCell = element("td", "rating-cell", day.day_rating ? `${day.day_rating} / 5` : "—");
+      row.append(workoutCell, intensityCell, ratingCell);
+      body.appendChild(row);
+    });
+  }
+
+  function renderNutritionSignals(days) {
+    const full = completed(days);
+    const container = document.getElementById("nutritionSignals");
+    container.replaceChildren();
+    const calories = numeric(full.map((day) => day.calories_kcal));
+    const incompleteDays = days.filter((day) => Number(day.incomplete_macro_entry_count) > 0).length;
+    const completeMeals = full.filter((day) => Number(day.meal_type_count) === 4).length;
+    const signals = [
+      {
+        label: "Разброс энергии",
+        value: calories.length > 1 ? `${format(Math.min(...calories))}–${format(Math.max(...calories))} ккал` : "мало данных",
+        note: "минимум и максимум завершённых дней",
+      },
+      {
+        label: "Полный дневной набор",
+        value: `${completeMeals} / ${full.length}`,
+        note: "дней с завтраком, обедом, ужином и перекусом",
+      },
+      {
+        label: "Неполные БЖУ",
+        value: `${incompleteDays}`,
+        note: "дней, где макросы являются известным минимумом",
+      },
     ];
-    const maxValue = Math.max(...macros.map((macro) => macro.value || 0), 1);
-    const container = document.getElementById("macroList");
+    signals.forEach((signal) => {
+      const card = element("article", "signal-card");
+      card.append(
+        element("span", "", signal.label),
+        element("strong", "", signal.value),
+        element("small", "", signal.note)
+      );
+      container.appendChild(card);
+    });
+  }
+
+  function renderWorkouts() {
+    const workouts = workoutsForMonth();
+    const container = document.getElementById("workoutList");
+    container.replaceChildren();
+    if (!workouts.length) {
+      container.appendChild(element("p", "empty-state", "В выбранном периоде нет записанных тренировок."));
+      return;
+    }
+
+    workouts.forEach((workout) => {
+      const item = element("article", "workout-row");
+      const date = element("div", "workout-date");
+      date.append(element("strong", "", String(Number(workout.diary_date.slice(-2)))), element("span", "", weekday(workout.diary_date)));
+      const name = element("div", "workout-name");
+      name.append(
+        element("strong", "", workoutNames[workout.workout_type] || workout.workout_type),
+        element("span", "", `${format(workout.duration_minutes)} мин${workout.distance_km ? ` · ${format(workout.distance_km, 2)} км` : ""}`)
+      );
+      const pace = formatPace(workout.average_pace_seconds_per_km);
+      const volume = element("div", "workout-detail");
+      volume.append(element("span", "", "Объём"), element("strong", "", pace || (workout.calories_burned_kcal ? `${format(workout.calories_burned_kcal)} ккал` : "время")));
+      const intensity = element("div", `workout-detail${intensityText([workout]) === "не записана" ? " is-missing" : ""}`);
+      intensity.append(element("span", "", "Интенсивность"), element("strong", "", intensityText([workout])));
+      item.append(date, name, volume, intensity);
+      container.appendChild(item);
+    });
+  }
+
+  function renderActivityNutrition(days) {
+    const full = completed(days);
+    const training = full.filter((day) => Number(day.workout_count) > 0);
+    const rest = full.filter((day) => Number(day.workout_count) === 0);
+    const container = document.getElementById("activityNutritionCards");
     container.replaceChildren();
 
-    macros.forEach((macro) => {
-      const row = document.createElement("div");
-      row.className = "macro-row";
-      const label = document.createElement("span");
-      label.textContent = macro.name;
-      const track = document.createElement("div");
-      track.className = "macro-track";
-      const fill = document.createElement("i");
-      fill.style.width = `${((macro.value || 0) / maxValue) * 100}%`;
-      track.appendChild(fill);
-      const value = document.createElement("strong");
-      value.textContent = macro.value === null ? "—" : `${round(macro.value, 1)} г`;
-      row.append(label, track, value);
-      container.appendChild(row);
+    const cards = [
+      {
+        label: "Тренировочные дни",
+        value: training.length ? `${format(average(training.map((day) => day.calories_kcal)))} ккал` : "нет данных",
+        note: training.length ? `${format(average(training.map((day) => day.protein_g)), 1)} г белка · ${format(average(training.map((day) => day.carbs_g)), 1)} г углеводов` : "нет завершённых дней с нагрузкой",
+      },
+      {
+        label: "Дни без тренировки",
+        value: rest.length ? `${format(average(rest.map((day) => day.calories_kcal)))} ккал` : "нет базы",
+        note: rest.length ? `${format(average(rest.map((day) => day.protein_g)), 1)} г белка · ${format(average(rest.map((day) => day.carbs_g)), 1)} г углеводов` : "нужен хотя бы один завершённый день без тренировки",
+      },
+      {
+        label: "Сон в дни с нагрузкой",
+        value: training.length ? formatHours(average(training.map((day) => day.sleep_minutes))) : "нет данных",
+        note: "сон, записанный в тот же календарный день; не обязательно сон после тренировки",
+      },
+      {
+        label: "Сила вывода",
+        value: full.length < 14 ? "предварительно" : "можно сравнивать",
+        note: `${full.length} завершённых ${plural(full.length, ["день", "дня", "дней"])}; причинные выводы не делаются`,
+      },
+    ];
+
+    cards.forEach((card) => {
+      const item = element("article", "comparison-card");
+      item.append(element("span", "", card.label), element("strong", "", card.value), element("p", "", card.note));
+      container.appendChild(item);
+    });
+  }
+
+  function renderNutritionGaps(days) {
+    const container = document.getElementById("nutritionGaps");
+    container.replaceChildren();
+    const entries = sum(days.map((day) => day.nutrition_entry_count));
+    const estimated = sum(days.map((day) => day.estimated_nutrition_entry_count));
+    const gaps = [
+      { status: "нет данных", title: "Клетчатка", text: "Не хранится структурно. Нельзя сравнить поступление клетчатки по дням." },
+      { status: "нет данных", title: "Витамины и минералы", text: "Кальций, железо, магний, калий, витамины D и B12 пока не считаются. Это не означает их дефицит." },
+      { status: "нет данных", title: "Вода и электролиты", text: "Нет дневного объёма воды и натрия; связь с бегом и восстановлением пока не видна." },
+      { status: `${estimated} / ${entries}`, title: "Оценочность питания", text: "Записей явно основаны на визуальной оценке. Диапазоны важнее точных десятых." },
+    ];
+    gaps.forEach((gap) => {
+      const card = element("article", "gap-card");
+      card.append(element("span", "gap-status", gap.status), element("h3", "", gap.title), element("p", "", gap.text));
+      container.appendChild(card);
     });
   }
 
   function renderFoodBases(days) {
-    const container = document.getElementById("foodBases");
-    container.replaceChildren();
     const counts = { meat: 0, chicken: 0, fish: 0 };
     days.forEach((day) => {
-      String(day.food_bases || "")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
+      String(day.food_bases || "").split(",").map((item) => item.trim()).filter(Boolean)
         .forEach((base) => { counts[base] = (counts[base] || 0) + 1; });
     });
-
+    const container = document.getElementById("foodBases");
+    container.replaceChildren();
     Object.keys(counts).forEach((base) => {
-      const item = document.createElement("div");
-      item.className = "base-item";
-      const label = document.createElement("span");
-      label.textContent = baseNames[base] || base;
-      const value = document.createElement("strong");
-      value.textContent = `${counts[base]} / ${days.length}`;
-      item.append(label, value);
+      const item = element("div", "base-item");
+      item.append(element("span", "", baseNames[base] || base), element("strong", "", `${counts[base]} / ${days.length}`));
       container.appendChild(item);
     });
+    const note = element("div", "base-item base-note");
+    note.append(element("span", "", "Ограничение"), element("p", "", "Яйца, молочные продукты, бобовые, орехи, овощи и фрукты пока не представлены отдельными структурными группами."));
+    container.appendChild(note);
   }
 
-  function renderActivity(days) {
-    const workouts = workoutsForMonth();
-    const container = document.getElementById("activityList");
-    container.replaceChildren();
-    setText(
-      "activityTitle",
-      workouts.length
-        ? `${workouts.length} ${plural(workouts.length, ["тренировка", "тренировки", "тренировок"])}`
-        : "Нет записей"
-    );
-
-    workouts.forEach((workout) => {
-      const item = document.createElement("div");
-      item.className = "activity-item";
-      const date = document.createElement("div");
-      date.className = "activity-day";
-      date.textContent = Number(workout.diary_date.slice(-2));
-      const copy = document.createElement("div");
-      copy.className = "activity-copy";
-      const name = document.createElement("strong");
-      name.textContent = workoutNames[workout.workout_type] || workout.workout_type;
-      const duration = document.createElement("span");
-      duration.textContent = `${round(workout.duration_minutes)} минут`;
-      copy.append(name, duration);
-      const distance = document.createElement("span");
-      distance.className = "activity-distance";
-      distance.textContent = workout.distance_km
-        ? `${round(workout.distance_km, 2)} км`
-        : workout.calories_burned_kcal
-          ? `${round(workout.calories_burned_kcal)} ккал`
-          : "зал";
-      item.append(date, copy, distance);
-      container.appendChild(item);
-    });
-
-    if (!workouts.length) {
-      const empty = document.createElement("p");
-      empty.className = "panel-footnote";
-      empty.textContent = "Отсутствие записи не означает отсутствие активности.";
-      container.appendChild(empty);
-    }
-  }
-
-  function renderDays(days) {
-    const container = document.getElementById("dayList");
-    container.replaceChildren();
-    [...days].reverse().forEach((day) => {
-      const row = document.createElement("article");
-      row.className = "day-row";
-
-      const date = document.createElement("div");
-      date.className = "day-date";
-      const number = document.createElement("strong");
-      number.textContent = Number(day.diary_date.slice(-2));
-      const weekday = document.createElement("span");
-      weekday.textContent = dayLabel(day.diary_date);
-      date.append(number, weekday);
-
-      const primary = document.createElement("div");
-      primary.className = "day-primary";
-      const calories = document.createElement("strong");
-      calories.textContent = `${round(day.calories_kcal)} ккал`;
-      const details = document.createElement("span");
-      details.className = "day-details";
-      details.textContent = day.has_workout
-        ? `${formatHours(day.sleep_minutes)} сна · ${round(day.workout_minutes)} мин нагрузки`
-        : `${formatHours(day.sleep_minutes)} сна · нагрузка не записана`;
-      const status = document.createElement("span");
-      status.className = `day-status${day.status === "complete" ? "" : " in-progress"}`;
-      status.textContent = day.status === "complete" ? "завершён" : "заполняется";
-      primary.append(calories, details, status);
-
-      const mealCopy = document.createElement("div");
-      mealCopy.className = "day-meals";
-      const meals = mealsForDate(day.diary_date);
-      mealCopy.textContent = meals.length
-        ? meals.map((meal) => `${mealNames[meal.meal_type] || meal.meal_type}: ${meal.foods}`).join(" · ")
-        : "Питание не записано";
-
-      const rating = document.createElement("div");
-      rating.className = "day-rating";
-      const ratingValue = document.createElement("strong");
-      ratingValue.textContent = day.day_rating || "—";
-      const ratingLabel = document.createElement("span");
-      ratingLabel.textContent = "из 5";
-      rating.append(ratingValue, ratingLabel);
-
-      row.append(date, primary, mealCopy, rating);
-      container.appendChild(row);
-    });
-  }
-
-  function renderCoverage(days) {
-    const container = document.getElementById("coverageTable");
-    container.replaceChildren();
-    const grid = document.createElement("div");
-    grid.className = "coverage-grid";
-    const headers = ["День", "Еда", "Сон", "Нагрузка", "Оценка", "Траты"];
-    headers.forEach((header) => {
-      const cell = document.createElement("div");
-      cell.className = "coverage-head";
-      cell.textContent = header;
-      grid.appendChild(cell);
-    });
-
+  function renderQuality(days) {
+    const coverage = document.getElementById("coverageTable");
+    coverage.replaceChildren();
+    const grid = element("div", "coverage-grid");
+    ["День", "Еда", "Сон", "Трен.", "Интенс.", "Оценка", "Траты"].forEach((label) => grid.appendChild(element("div", "coverage-head", label)));
     days.forEach((day) => {
-      const date = document.createElement("div");
-      date.textContent = Number(day.diary_date.slice(-2));
-      grid.appendChild(date);
+      grid.appendChild(element("div", "coverage-date", String(Number(day.diary_date.slice(-2)))));
       [
-        day.nutrition_entry_count > 0,
+        Number(day.nutrition_entry_count) > 0,
         Boolean(day.has_sleep),
         Boolean(day.has_workout),
+        Number(day.intensity_record_count) > 0,
         Boolean(day.has_rating),
         Boolean(day.has_expenses),
       ].forEach((present) => {
-        const cell = document.createElement("div");
-        const dot = document.createElement("span");
-        dot.className = `coverage-dot${present ? "" : " is-empty"}`;
+        const cell = element("div", "coverage-cell");
+        const dot = element("span", `coverage-dot${present ? "" : " is-empty"}`);
         dot.title = present ? "Есть запись" : "Нет записи";
         cell.appendChild(dot);
         grid.appendChild(cell);
       });
     });
-    container.appendChild(grid);
-  }
+    coverage.appendChild(grid);
 
-  function renderQuality(days) {
-    const container = document.getElementById("qualityCards");
-    container.replaceChildren();
-    const sleepDays = days.filter((day) => day.has_sleep).length;
-    const sleepQualityDays = days.filter((day) => day.sleep_quality !== null).length;
+    const quality = document.getElementById("qualityCards");
+    quality.replaceChildren();
     const monthQuality = payload.quality.find((item) => item.diary_month === selectedMonth) || {};
-    const estimated = Number(monthQuality.estimated_entries) || 0;
     const entries = Number(monthQuality.nutrition_entries) || 0;
+    const estimated = Number(monthQuality.estimated_entries) || 0;
     const incomplete = Number(monthQuality.incomplete_macro_entries) || 0;
+    const workouts = workoutsForMonth();
+    const intensity = workouts.filter((workout) => workout.perceived_exertion || workout.average_heart_rate_bpm).length;
     const cards = [
-      {
-        value: `${sleepQualityDays} / ${sleepDays}`,
-        text: "записей сна содержат субъективную оценку качества",
-      },
-      {
-        value: `${estimated} / ${entries}`,
-        text: "записей питания явно помечены как оценочные",
-      },
-      {
-        value: `${incomplete}`,
-        text: "запись содержит калории, но неполные БЖУ",
-      },
-      {
-        value: "0",
-        text: "микронутриентов хранятся структурно — витаминный анализ пока преждевременен",
-      },
+      [`${estimated} / ${entries}`, "записей питания явно оценочные"],
+      [`${incomplete}`, "записей с калориями, но неизвестными БЖУ"],
+      [`${days.filter((day) => day.sleep_quality !== null).length} / ${days.filter((day) => day.has_sleep).length}`, "записей сна с субъективным качеством"],
+      [`${intensity} / ${workouts.length}`, "тренировок с фактической интенсивностью"],
     ];
-
-    cards.forEach((card) => {
-      const item = document.createElement("article");
-      item.className = "quality-card";
-      const value = document.createElement("strong");
-      value.textContent = card.value;
-      const text = document.createElement("p");
-      text.textContent = card.text;
-      item.append(value, text);
-      container.appendChild(item);
+    cards.forEach(([value, text]) => {
+      const card = element("article", "quality-card");
+      card.append(element("strong", "", value), element("p", "", text));
+      quality.appendChild(card);
     });
-
-    if (sleepQualityDays === 0 && sleepDays > 0) {
-      setText("nextStepTitle", "Добавлять качество сна утром");
-      setText(
-        "nextStepText",
-        "Один ответ по шкале 1–5 и короткая отметка о пробуждениях дадут больше пользы, чем ещё одна приблизительная десятая грамма в оценке еды."
-      );
-    } else if (estimated > entries / 2) {
-      setText("nextStepTitle", "Добавлять масштаб к фотографии еды");
-      setText(
-        "nextStepText",
-        "Диаметр тарелки, масса с упаковки и количество масла сокращают главную погрешность фотооценки без усложнения дневника."
-      );
-    }
   }
 
-  function prepareCanvas(canvas) {
+  function prepareCanvas(id) {
+    const canvas = document.getElementById(id);
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const rect = canvas.getBoundingClientRect();
-    const width = Math.max(rect.width, 280);
-    const height = Math.max(rect.height, 220);
+    const width = Math.max(rect.width, 300);
+    const height = Math.max(rect.height, 260);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     const context = canvas.getContext("2d");
@@ -429,132 +419,234 @@
     return { context, width, height };
   }
 
-  function drawCalorieChart(days) {
-    const canvas = document.getElementById("calorieChart");
-    const { context, width, height } = prepareCanvas(canvas);
-    context.clearRect(0, 0, width, height);
-    if (!days.length) return;
-
-    const padding = { top: 18, right: 8, bottom: 34, left: 48 };
-    const plotWidth = width - padding.left - padding.right;
+  function drawGrid(context, width, height, padding, maxValue, formatter, dark = false) {
     const plotHeight = height - padding.top - padding.bottom;
-    const maxValue = Math.max(...days.map((day) => Number(day.calories_kcal) || 0), 2400);
-    const ceiling = Math.ceil(maxValue / 500) * 500;
-
     context.font = "11px ui-sans-serif, system-ui";
     context.textAlign = "right";
     context.textBaseline = "middle";
     for (let index = 0; index <= 4; index += 1) {
       const y = padding.top + (plotHeight / 4) * index;
-      const value = ceiling - (ceiling / 4) * index;
-      context.strokeStyle = "rgba(29,36,32,.10)";
+      const value = maxValue - (maxValue / 4) * index;
+      context.strokeStyle = dark ? "rgba(251,252,248,.15)" : COLORS.grid;
       context.beginPath();
       context.moveTo(padding.left, y);
       context.lineTo(width - padding.right, y);
       context.stroke();
-      context.fillStyle = "#7a817c";
-      context.fillText(round(value), padding.left - 8, y);
+      context.fillStyle = dark ? "rgba(251,252,248,.58)" : COLORS.muted;
+      context.fillText(formatter(value), padding.left - 8, y);
     }
+  }
 
+  function drawDayLabels(context, days, width, height, padding, dark = false) {
+    const plotWidth = width - padding.left - padding.right;
+    const slot = plotWidth / Math.max(days.length, 1);
+    context.font = "11px ui-sans-serif, system-ui";
+    context.fillStyle = dark ? "rgba(251,252,248,.65)" : COLORS.muted;
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    days.forEach((day, index) => {
+      context.fillText(String(Number(day.diary_date.slice(-2))), padding.left + slot * index + slot / 2, height - padding.bottom + 13);
+    });
+  }
+
+  function drawCalorieChart(days) {
+    const { context, width, height } = prepareCanvas("calorieChart");
+    context.clearRect(0, 0, width, height);
+    if (!days.length) return;
+    const padding = { top: 16, right: 12, bottom: 38, left: 52 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const maximum = Math.max(...days.map((day) => Number(day.calories_kcal) || 0), 500);
+    const ceiling = Math.ceil(maximum / 500) * 500;
+    drawGrid(context, width, height, padding, ceiling, (value) => format(value));
     const slot = plotWidth / days.length;
-    const barWidth = Math.min(54, slot * 0.54);
+    const barWidth = Math.min(58, slot * 0.58);
     days.forEach((day, index) => {
       const value = Number(day.calories_kcal) || 0;
       const barHeight = (value / ceiling) * plotHeight;
       const x = padding.left + slot * index + (slot - barWidth) / 2;
       const y = padding.top + plotHeight - barHeight;
-      context.fillStyle = day.status === "complete" ? "#246b59" : "#b9d4c7";
+      context.fillStyle = day.status === "complete" ? COLORS.green : COLORS.greenSoft;
       context.fillRect(x, y, barWidth, barHeight);
       if (day.status !== "complete") {
-        context.fillStyle = "#e36f45";
+        context.fillStyle = COLORS.orange;
         context.fillRect(x, y, barWidth, 4);
       }
-      context.fillStyle = "#68706a";
-      context.textAlign = "center";
-      context.textBaseline = "top";
-      context.fillText(Number(day.diary_date.slice(-2)), x + barWidth / 2, height - 22);
+      if (width > 520) {
+        context.fillStyle = COLORS.ink;
+        context.font = "11px ui-sans-serif, system-ui";
+        context.textAlign = "center";
+        context.textBaseline = "bottom";
+        context.fillText(format(value), x + barWidth / 2, y - 6);
+      }
     });
+    drawDayLabels(context, days, width, height, padding);
+    const avg = average(completed(days).map((day) => day.calories_kcal));
+    setText("calorieChartTitle", avg === null ? "Калории по дням" : `Калории по дням · среднее ${format(avg)} ккал`);
+  }
 
-    const complete = days.filter((day) => day.status === "complete");
-    const calorieAverage = average(complete.map((day) => day.calories_kcal));
-    setText("calorieAverage", calorieAverage === null ? "—" : `${round(calorieAverage)} ккал`);
+  function drawMacroChart(days) {
+    const { context, width, height } = prepareCanvas("macroChart");
+    context.clearRect(0, 0, width, height);
+    if (!days.length) return;
+    const padding = { top: 16, right: 14, bottom: 38, left: 46 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const series = [
+      { key: "protein_g", color: COLORS.blue },
+      { key: "fat_g", color: COLORS.orange },
+      { key: "carbs_g", color: COLORS.yellow },
+    ];
+    const maximum = Math.max(...series.flatMap((item) => days.map((day) => Number(day[item.key]) || 0)), 50);
+    const ceiling = Math.ceil(maximum / 50) * 50;
+    drawGrid(context, width, height, padding, ceiling, (value) => `${format(value)}г`);
+    const xFor = (index) => days.length === 1 ? padding.left + plotWidth / 2 : padding.left + (plotWidth / (days.length - 1)) * index;
+    series.forEach((item) => {
+      context.strokeStyle = item.color;
+      context.lineWidth = 2.5;
+      context.beginPath();
+      days.forEach((day, index) => {
+        const x = xFor(index);
+        const y = padding.top + plotHeight - ((Number(day[item.key]) || 0) / ceiling) * plotHeight;
+        if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+      });
+      context.stroke();
+      days.forEach((day, index) => {
+        const x = xFor(index);
+        const y = padding.top + plotHeight - ((Number(day[item.key]) || 0) / ceiling) * plotHeight;
+        context.fillStyle = item.color;
+        context.beginPath();
+        context.arc(x, y, 4, 0, Math.PI * 2);
+        context.fill();
+      });
+    });
+    drawDayLabels(context, days, width, height, padding);
   }
 
   function drawSleepChart(days) {
-    const canvas = document.getElementById("sleepChart");
-    const { context, width, height } = prepareCanvas(canvas);
+    const { context, width, height } = prepareCanvas("sleepChart");
     context.clearRect(0, 0, width, height);
-    const points = days.filter((day) => day.sleep_minutes !== null);
-    if (!points.length) return;
-
-    const padding = { top: 20, right: 16, bottom: 34, left: 40 };
+    if (!days.length) return;
+    const padding = { top: 16, right: 14, bottom: 38, left: 44 };
     const plotWidth = width - padding.left - padding.right;
     const plotHeight = height - padding.top - padding.bottom;
-    const ceiling = 10;
-
-    context.font = "11px ui-sans-serif, system-ui";
-    for (let hours = 2; hours <= ceiling; hours += 2) {
-      const y = padding.top + plotHeight - (hours / ceiling) * plotHeight;
-      context.strokeStyle = "rgba(255,253,248,.15)";
-      context.beginPath();
-      context.moveTo(padding.left, y);
-      context.lineTo(width - padding.right, y);
-      context.stroke();
-      context.fillStyle = "rgba(255,253,248,.55)";
-      context.textAlign = "right";
-      context.textBaseline = "middle";
-      context.fillText(`${hours}ч`, padding.left - 8, y);
-    }
-
-    const coords = points.map((day, index) => {
-      const x = points.length === 1
-        ? padding.left + plotWidth / 2
-        : padding.left + (plotWidth / (points.length - 1)) * index;
-      const y = padding.top + plotHeight - ((Number(day.sleep_minutes) / 60) / ceiling) * plotHeight;
-      return { x, y, day };
-    });
-
-    context.strokeStyle = "#d8f56f";
+    const maximumHours = Math.max(...days.map((day) => (Number(day.sleep_minutes) || 0) / 60), 8);
+    const ceiling = Math.ceil(maximumHours / 2) * 2;
+    drawGrid(context, width, height, padding, ceiling, (value) => `${format(value)}ч`, true);
+    const slot = plotWidth / days.length;
+    const points = days.map((day, index) => ({
+      value: day.sleep_minutes === null ? null : Number(day.sleep_minutes) / 60,
+      x: padding.left + slot * index + slot / 2,
+    }));
+    context.strokeStyle = "#bbf07b";
     context.lineWidth = 3;
+    let drawing = false;
     context.beginPath();
-    coords.forEach((point, index) => {
-      if (index === 0) context.moveTo(point.x, point.y);
-      else context.lineTo(point.x, point.y);
+    points.forEach((point) => {
+      if (point.value === null) { drawing = false; return; }
+      const y = padding.top + plotHeight - (point.value / ceiling) * plotHeight;
+      if (!drawing) { context.moveTo(point.x, y); drawing = true; } else context.lineTo(point.x, y);
     });
     context.stroke();
-
-    coords.forEach((point) => {
-      context.fillStyle = "#d8f56f";
+    points.forEach((point) => {
+      if (point.value === null) return;
+      const y = padding.top + plotHeight - (point.value / ceiling) * plotHeight;
+      context.fillStyle = "#bbf07b";
       context.beginPath();
-      context.arc(point.x, point.y, 5, 0, Math.PI * 2);
+      context.arc(point.x, y, 5, 0, Math.PI * 2);
       context.fill();
-      context.fillStyle = "rgba(255,253,248,.7)";
-      context.textAlign = "center";
-      context.textBaseline = "top";
-      context.fillText(Number(point.day.diary_date.slice(-2)), point.x, height - 22);
     });
+    drawDayLabels(context, days, width, height, padding, true);
+  }
 
-    const sleepAverage = average(points.map((day) => day.sleep_minutes));
-    setText("sleepAverage", formatHours(sleepAverage));
+  function drawActivityChart(days) {
+    const { context, width, height } = prepareCanvas("activityChart");
+    context.clearRect(0, 0, width, height);
+    if (!days.length) return;
+    const padding = { top: 16, right: 12, bottom: 38, left: 44 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const maximum = Math.max(...days.map((day) => Number(day.workout_minutes) || 0), 30);
+    const ceiling = Math.ceil(maximum / 15) * 15;
+    drawGrid(context, width, height, padding, ceiling, (value) => `${format(value)}м`);
+    const slot = plotWidth / days.length;
+    const barWidth = Math.min(54, slot * 0.5);
+    days.forEach((day, index) => {
+      const value = Number(day.workout_minutes) || 0;
+      const x = padding.left + slot * index + (slot - barWidth) / 2;
+      const barHeight = (value / ceiling) * plotHeight;
+      const y = padding.top + plotHeight - barHeight;
+      context.fillStyle = Number(day.intensity_record_count) > 0 ? COLORS.orange : COLORS.blue;
+      context.fillRect(x, y, barWidth, barHeight);
+      if (value > 0 && Number(day.intensity_record_count) === 0) {
+        context.strokeStyle = COLORS.orange;
+        context.setLineDash([4, 3]);
+        context.strokeRect(x, y, barWidth, barHeight);
+        context.setLineDash([]);
+      }
+    });
+    drawDayLabels(context, days, width, height, padding);
+  }
+
+  function drawRelationshipChart(days) {
+    const { context, width, height } = prepareCanvas("relationshipChart");
+    context.clearRect(0, 0, width, height);
+    const points = completed(days);
+    if (!points.length) return;
+    const padding = { top: 16, right: 22, bottom: 48, left: 52 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const maxMinutes = Math.max(...points.map((day) => Number(day.workout_minutes) || 0), 30);
+    const maxCalories = Math.ceil(Math.max(...points.map((day) => Number(day.calories_kcal) || 0), 500) / 500) * 500;
+    drawGrid(context, width, height, padding, maxCalories, (value) => format(value));
+    context.fillStyle = COLORS.muted;
+    context.font = "11px ui-sans-serif, system-ui";
+    context.textAlign = "center";
+    context.fillText("минуты тренировки", padding.left + plotWidth / 2, height - 10);
+    [0, maxMinutes / 2, maxMinutes].forEach((value) => {
+      const x = padding.left + (value / maxMinutes) * plotWidth;
+      context.fillText(format(value), x, height - 30);
+    });
+    points.forEach((day) => {
+      const x = padding.left + ((Number(day.workout_minutes) || 0) / maxMinutes) * plotWidth;
+      const y = padding.top + plotHeight - ((Number(day.calories_kcal) || 0) / maxCalories) * plotHeight;
+      const radius = 6 + Math.min((Number(day.protein_g) || 0) / 45, 4);
+      context.fillStyle = Number(day.workout_count) > 0 ? "rgba(29,118,99,.82)" : "rgba(115,128,121,.7)";
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = COLORS.ink;
+      context.font = "11px ui-sans-serif, system-ui";
+      context.textAlign = "center";
+      context.textBaseline = "bottom";
+      context.fillText(String(Number(day.diary_date.slice(-2))), x, y - radius - 4);
+    });
+  }
+
+  function drawAll(days) {
+    drawCalorieChart(days);
+    drawMacroChart(days);
+    drawSleepChart(days);
+    drawActivityChart(days);
+    drawRelationshipChart(days);
   }
 
   function render() {
     currentDays = daysForMonth();
     renderHeader(currentDays);
-    renderMacros(currentDays);
+    renderDailyTable(currentDays);
+    renderNutritionSignals(currentDays);
+    renderWorkouts();
+    renderActivityNutrition(currentDays);
+    renderNutritionGaps(currentDays);
     renderFoodBases(currentDays);
-    renderActivity(currentDays);
-    renderDays(currentDays);
-    renderCoverage(currentDays);
     renderQuality(currentDays);
-    drawCalorieChart(currentDays);
-    drawSleepChart(currentDays);
+    drawAll(currentDays);
   }
 
   payload.meta.months.forEach((month) => {
-    const option = document.createElement("option");
+    const option = element("option", "", monthLabel(month));
     option.value = month;
-    option.textContent = monthLabel(month);
     monthSelect.appendChild(option);
   });
   monthSelect.value = selectedMonth;
@@ -566,31 +658,8 @@
   let resizeFrame = null;
   window.addEventListener("resize", () => {
     if (resizeFrame) cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(() => {
-      drawCalorieChart(currentDays);
-      drawSleepChart(currentDays);
-    });
+    resizeFrame = requestAnimationFrame(() => drawAll(currentDays));
   });
-
-  const navLinks = Array.from(document.querySelectorAll(".section-nav a"));
-  const observedSections = navLinks
-    .map((link) => document.querySelector(link.getAttribute("href")))
-    .filter(Boolean);
-  if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) return;
-        navLinks.forEach((link) => {
-          link.classList.toggle("is-active", link.getAttribute("href") === `#${visible.target.id}`);
-        });
-      },
-      { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.2, 0.6] }
-    );
-    observedSections.forEach((section) => observer.observe(section));
-  }
 
   render();
 })();

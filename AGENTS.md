@@ -96,6 +96,11 @@ the logging flow lightweight: never turn this into a long questionnaire.
   conceptually separate.
 - Track expenses in rubles under `groceries`, `home`, `transport`, or `other`.
   Preserve the user's category and amount; do not infer missing expenses.
+- For workouts, record perceived exertion on a 1–10 RPE scale and average or
+  maximum heart rate only when the user or device supplies them. Duration,
+  distance, pace, or calories alone are workload measures, not proof of
+  physiological intensity; keep intensity unknown when RPE and heart rate are
+  absent.
 - Keep reproducible source data in SQL under `db/`; do not commit the generated
   `data/health_diary.sqlite3` file.
 - Keep seed operations idempotent. Re-running `./scripts/init_db.sh` must not
@@ -114,6 +119,19 @@ the logging flow lightweight: never turn this into a long questionnaire.
 - After changes, initialize a clean temporary database, apply seed data twice,
   run `PRAGMA integrity_check`, and inspect `daily_health_summary` for the
   affected dates.
+
+## Dashboard update policy
+
+- Treat `dashboard/data.js` as a deliberate analytical snapshot, not as part of
+  routine diary entry.
+- Do not run `scripts/build_dashboard.sh`, `scripts/generate_dashboard.py`, or
+  otherwise refresh dashboard data after individual food, sleep, workout,
+  rating, or expense records.
+- Refresh the dashboard only when the user explicitly asks to update, rebuild,
+  or analyze the dashboard. Routine validation must use a temporary database
+  and must not change the dashboard snapshot.
+- When a refresh is explicitly requested, rebuild from the reproducible SQL
+  source, verify the generated data, and state the latest included diary date.
 
 ## Daily and ongoing coaching
 

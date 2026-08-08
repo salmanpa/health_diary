@@ -3,211 +3,160 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f0e6">
-  <meta name="description" content="Личная аналитика сна, питания, тренировок и качества данных.">
-  <title>health_diary — аналитика здоровья</title>
+  <meta name="theme-color" content="#f5f6f2">
+  <meta name="description" content="Дневная аналитика питания, сна, тренировок и качества данных health_diary.">
+  <title>health_diary — аналитический срез</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <noscript>
-    <div class="noscript">Для интерактивной аналитики нужно включить JavaScript.</div>
-  </noscript>
+  <noscript><div class="notice">Для отображения аналитики нужен JavaScript.</div></noscript>
 
-  <div class="shell">
-    <header class="topbar">
-      <a class="brand" href="#top" aria-label="Наверх">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span>health_diary</span>
-      </a>
-      <div class="period-control">
-        <label for="monthSelect">Период</label>
-        <select id="monthSelect" aria-label="Выберите месяц"></select>
-      </div>
-    </header>
-
-    <nav class="section-nav" aria-label="Разделы аналитики">
-      <a class="is-active" href="#overview">Обзор</a>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="К началу дашборда">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span>health_diary</span>
+      <small>analytics</small>
+    </a>
+    <nav aria-label="Разделы">
+      <a href="#daily">По дням</a>
       <a href="#nutrition">Питание</a>
       <a href="#recovery">Сон и нагрузка</a>
-      <a href="#quality">Качество данных</a>
+      <a href="#gaps">Пробелы</a>
     </nav>
+    <label class="period-control" for="monthSelect">
+      <span>Период</span>
+      <select id="monthSelect" aria-label="Выберите месяц"></select>
+    </label>
+  </header>
 
-    <main id="top">
-      <section class="hero" id="overview">
-        <div class="hero-copy">
-          <p class="eyebrow"><span id="trackedDays">0</span> дней наблюдений · <span id="completeDays">0</span> завершено</p>
-          <h1>Здоровье — это ритм,<br><em>а не один день.</em></h1>
-          <p class="hero-summary" id="heroSummary">Собираем первую картину месяца.</p>
-          <div class="status-line">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="latestStatus">Последний день ещё заполняется</span>
-          </div>
-        </div>
-        <div class="hero-focus" aria-label="Главный сигнал месяца">
-          <p>Главный сигнал</p>
-          <strong id="focusValue">—</strong>
-          <span id="focusLabel">нужно больше данных</span>
-          <div class="focus-rule" aria-hidden="true"><i></i></div>
-        </div>
-      </section>
+  <main id="overview">
+    <section class="dashboard-head">
+      <div>
+        <p class="kicker">Аналитический снимок · <span id="periodLabel">—</span></p>
+        <h1>Состояние по дням</h1>
+        <p id="summaryText" class="summary-text">Собираем показатели выбранного периода.</p>
+      </div>
+      <div class="snapshot-card">
+        <span>Данные по</span>
+        <strong id="latestDate">—</strong>
+        <p>Снимок обновляется только по отдельному запросу.</p>
+      </div>
+    </section>
 
-      <section class="metric-grid" aria-label="Ключевые показатели">
-        <article class="metric metric-dark">
-          <p>Сон</p>
-          <strong id="sleepMetric">—</strong>
-          <span id="sleepMeta">по записанным дням</span>
+    <section class="kpi-grid" aria-label="Ключевые показатели периода">
+      <article class="kpi"><span>Дней / завершено</span><strong id="daysKpi">—</strong><small id="daysMeta">—</small></article>
+      <article class="kpi"><span>Калории</span><strong id="caloriesKpi">—</strong><small>среднее завершённых дней</small></article>
+      <article class="kpi"><span>Средние Б / Ж / У</span><strong id="macrosKpi">—</strong><small>граммов в день</small></article>
+      <article class="kpi"><span>Сон</span><strong id="sleepKpi">—</strong><small id="sleepMeta">по записанным дням</small></article>
+      <article class="kpi"><span>Тренировки</span><strong id="trainingKpi">—</strong><small id="trainingMeta">—</small></article>
+      <article class="kpi"><span>Интенсивность</span><strong id="intensityKpi">—</strong><small id="intensityMeta">RPE или пульс</small></article>
+    </section>
+
+    <section class="section" id="daily">
+      <div class="section-head">
+        <div><p>01 · По дням</p><h2>Единая лента показателей</h2></div>
+        <p>Незавершённые дни показываются, но исключаются из средних. Нули и отсутствие данных различаются.</p>
+      </div>
+      <div class="table-panel">
+        <div class="table-scroll">
+          <table class="daily-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Ккал</th>
+                <th>Белки</th>
+                <th>Жиры</th>
+                <th>Углеводы</th>
+                <th>Сон</th>
+                <th>Тренировка</th>
+                <th>Интенсивность</th>
+                <th>Оценка</th>
+              </tr>
+            </thead>
+            <tbody id="dailyTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="nutrition">
+      <div class="section-head">
+        <div><p>02 · Питание</p><h2>Энергия и БЖУ по дням</h2></div>
+        <p>Это наблюдения, а не целевые значения: цель по весу и калорийности пока не задана.</p>
+      </div>
+      <div class="chart-grid">
+        <article class="panel panel-wide">
+          <div class="panel-head"><div><span>Энергия</span><strong id="calorieChartTitle">Калории по дням</strong></div><div class="legend"><i class="dot calories"></i>ккал</div></div>
+          <div class="canvas-wrap"><canvas id="calorieChart" role="img" aria-label="Калории по дням"></canvas></div>
         </article>
-        <article class="metric">
-          <p>Энергия рациона</p>
-          <strong id="calorieMetric">—</strong>
-          <span>среднее по завершённым дням</span>
+        <article class="panel panel-wide">
+          <div class="panel-head"><div><span>Макронутриенты</span><strong>Белки, жиры и углеводы</strong></div><div class="legend"><i class="dot protein"></i>Б <i class="dot fat"></i>Ж <i class="dot carbs"></i>У</div></div>
+          <div class="canvas-wrap"><canvas id="macroChart" role="img" aria-label="Белки, жиры и углеводы по дням"></canvas></div>
         </article>
-        <article class="metric">
-          <p>Тренировки</p>
-          <strong id="trainingMetric">—</strong>
-          <span id="trainingMeta">за выбранный месяц</span>
+      </div>
+      <div class="analysis-strip" id="nutritionSignals"></div>
+    </section>
+
+    <section class="section" id="recovery">
+      <div class="section-head">
+        <div><p>03 · Сон и нагрузка</p><h2>Восстановление и активность</h2></div>
+        <p>Продолжительность и объём видны напрямую. Интенсивность считается известной только при наличии RPE или пульса.</p>
+      </div>
+      <div class="chart-grid">
+        <article class="panel panel-wide panel-dark">
+          <div class="panel-head"><div><span>Восстановление</span><strong>Сон по дням</strong></div><div class="legend"><i class="dot sleep"></i>часы</div></div>
+          <div class="canvas-wrap"><canvas id="sleepChart" role="img" aria-label="Продолжительность сна по дням"></canvas></div>
         </article>
-        <article class="metric metric-accent">
-          <p>Оценка дня</p>
-          <strong id="ratingMetric">—</strong>
-          <span>только пользовательские оценки</span>
+        <article class="panel panel-wide">
+          <div class="panel-head"><div><span>Объём нагрузки</span><strong>Минуты тренировок</strong></div><div class="legend"><i class="dot activity"></i>минуты</div></div>
+          <div class="canvas-wrap"><canvas id="activityChart" role="img" aria-label="Продолжительность тренировок по дням"></canvas></div>
         </article>
-      </section>
+      </div>
+      <div class="workout-list" id="workoutList"></div>
+    </section>
 
-      <section class="insight" aria-live="polite">
-        <span class="insight-number">01</span>
-        <p id="primaryInsight">Первые записи формируют базовую линию.</p>
-      </section>
-
-      <section class="section-block" id="nutrition">
-        <div class="section-heading">
-          <div>
-            <p class="section-index">01 / Питание</p>
-            <h2>Энергия и макросы</h2>
-          </div>
-          <p class="section-note">Незавершённые дни отмечены светлее и не входят в средние.</p>
-        </div>
-
-        <div class="chart-layout">
-          <article class="panel chart-panel">
-            <div class="panel-title">
-              <div>
-                <p>Калории по дням</p>
-                <strong id="calorieAverage">—</strong>
-              </div>
-              <span>ккал / день</span>
-            </div>
-            <div class="canvas-wrap">
-              <canvas id="calorieChart" role="img" aria-label="Калории по дням"></canvas>
-            </div>
-          </article>
-
-          <article class="panel macro-panel">
-            <div class="panel-title">
-              <div>
-                <p>Средние БЖУ</p>
-                <strong>Завершённые дни</strong>
-              </div>
-            </div>
-            <div class="macro-list" id="macroList"></div>
-            <p class="panel-footnote">Это наблюдение, не персональная цель. Цель питания в проекте пока не задана.</p>
-          </article>
-        </div>
-
-        <article class="panel bases-panel">
-          <div class="panel-title">
-            <div>
-              <p>Разнообразие источников</p>
-              <strong>Отмеченные пищевые основы</strong>
-            </div>
-            <span>дней из выбранного периода</span>
-          </div>
-          <div class="base-grid" id="foodBases"></div>
-          <p class="panel-footnote">Текущие категории учитывают только мясо, курицу и рыбу. Бобовые, яйца, молочные продукты, морепродукты и орехи пока структурно не считаются.</p>
+    <section class="section" id="activity-nutrition">
+      <div class="section-head">
+        <div><p>04 · Связи</p><h2>Активность и питание</h2></div>
+        <p>Сравнение описывает совпадения внутри дневника и не доказывает причинно-следственную связь.</p>
+      </div>
+      <div class="relationship-grid">
+        <article class="panel relationship-chart">
+          <div class="panel-head"><div><span>Дневной контекст</span><strong>Калории относительно минут нагрузки</strong></div></div>
+          <div class="canvas-wrap"><canvas id="relationshipChart" role="img" aria-label="Связь дневных калорий и минут тренировок"></canvas></div>
         </article>
-      </section>
+        <div class="comparison-grid" id="activityNutritionCards"></div>
+      </div>
+    </section>
 
-      <section class="section-block" id="recovery">
-        <div class="section-heading">
-          <div>
-            <p class="section-index">02 / Сон и нагрузка</p>
-            <h2>Восстановление в контексте</h2>
-          </div>
-          <p class="section-note">Совмещаем сон и тренировки, не делая медицинских выводов по короткой серии.</p>
-        </div>
+    <section class="section" id="gaps">
+      <div class="section-head">
+        <div><p>05 · Элементы питания</p><h2>Что можно и нельзя оценить</h2></div>
+        <p>Отсутствие структурной записи — не доказательство дефицита. Диагностика дефицитов требует подходящих данных и иногда анализов.</p>
+      </div>
+      <div class="gap-grid" id="nutritionGaps"></div>
+      <article class="panel diversity-panel">
+        <div class="panel-head"><div><span>Разнообразие</span><strong>Зафиксированные пищевые основы</strong></div><span>дней периода</span></div>
+        <div class="base-grid" id="foodBases"></div>
+      </article>
+    </section>
 
-        <div class="chart-layout chart-layout-reverse">
-          <article class="panel chart-panel sleep-panel">
-            <div class="panel-title">
-              <div>
-                <p>Продолжительность сна</p>
-                <strong id="sleepAverage">—</strong>
-              </div>
-              <span>часов / ночь</span>
-            </div>
-            <div class="canvas-wrap">
-              <canvas id="sleepChart" role="img" aria-label="Продолжительность сна по дням"></canvas>
-            </div>
-          </article>
+    <section class="section" id="quality">
+      <div class="section-head">
+        <div><p>06 · Качество данных</p><h2>Насколько надёжен срез</h2></div>
+        <p>Главные ограничения показываются рядом с метриками, а не скрываются в итоговых средних.</p>
+      </div>
+      <div class="quality-grid">
+        <article class="panel coverage-panel"><div class="panel-head"><div><span>Покрытие</span><strong>Записи по дням</strong></div></div><div id="coverageTable"></div></article>
+        <div class="quality-cards" id="qualityCards"></div>
+      </div>
+    </section>
+  </main>
 
-          <article class="panel activity-panel">
-            <div class="panel-title">
-              <div>
-                <p>Нагрузка</p>
-                <strong id="activityTitle">Нет записей</strong>
-              </div>
-            </div>
-            <div class="activity-list" id="activityList"></div>
-          </article>
-        </div>
-      </section>
-
-      <section class="section-block" id="days">
-        <div class="section-heading compact-heading">
-          <div>
-            <p class="section-index">03 / Дневник</p>
-            <h2>Дни крупным планом</h2>
-          </div>
-        </div>
-        <div class="day-list" id="dayList"></div>
-      </section>
-
-      <section class="section-block" id="quality">
-        <div class="section-heading">
-          <div>
-            <p class="section-index">04 / Качество данных</p>
-            <h2>Чего пока не видно</h2>
-          </div>
-          <p class="section-note">Уверенная аналитика начинается с честного учёта пропусков и оценок.</p>
-        </div>
-
-        <div class="quality-layout">
-          <article class="panel coverage-panel">
-            <div class="panel-title">
-              <div>
-                <p>Покрытие записей</p>
-                <strong>По дням и блокам</strong>
-              </div>
-            </div>
-            <div class="coverage-table" id="coverageTable"></div>
-          </article>
-
-          <div class="quality-cards" id="qualityCards"></div>
-        </div>
-      </section>
-
-      <section class="next-step">
-        <p class="section-index">Следующий маленький шаг</p>
-        <h2 id="nextStepTitle">Добавлять качество сна утром</h2>
-        <p id="nextStepText">Один ответ по шкале 1–5 заметно повысит ценность сравнений сна, энергии и тренировок.</p>
-      </section>
-    </main>
-
-    <footer>
-      <span>health_diary · локальная аналитика</span>
-      <span id="dataFreshness">Данные не загружены</span>
-    </footer>
-  </div>
+  <footer>
+    <span>health_diary · аналитический снимок</span>
+    <span id="footerFreshness">—</span>
+  </footer>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
