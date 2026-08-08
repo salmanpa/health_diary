@@ -9,21 +9,6 @@ CREATE TABLE IF NOT EXISTS calendar_days (
     notes TEXT
 );
 
-CREATE TABLE IF NOT EXISTS health_events (
-    event_id TEXT PRIMARY KEY,
-    calendar_day_id INTEGER NOT NULL
-        REFERENCES calendar_days(id) ON DELETE CASCADE,
-    event_type TEXT NOT NULL
-        CHECK (event_type IN ('nutrition', 'sleep', 'workout', 'daily_checkin', 'expense')),
-    occurred_at TEXT,
-    received_at TEXT NOT NULL,
-    source TEXT NOT NULL,
-    payload_json TEXT NOT NULL CHECK (json_valid(payload_json))
-);
-
-CREATE INDEX IF NOT EXISTS idx_health_events_day
-    ON health_events(calendar_day_id);
-
 CREATE TABLE IF NOT EXISTS nutrition_entries (
     id INTEGER PRIMARY KEY,
     calendar_day_id INTEGER NOT NULL
@@ -33,31 +18,15 @@ CREATE TABLE IF NOT EXISTS nutrition_entries (
     eaten_at TEXT,
     food_name TEXT NOT NULL,
     weight_g REAL CHECK (weight_g IS NULL OR weight_g >= 0),
-    weight_min_g REAL CHECK (weight_min_g IS NULL OR weight_min_g >= 0),
-    weight_max_g REAL CHECK (weight_max_g IS NULL OR weight_max_g >= 0),
     calories_kcal REAL NOT NULL DEFAULT 0 CHECK (calories_kcal >= 0),
-    calories_min_kcal REAL
-        CHECK (calories_min_kcal IS NULL OR calories_min_kcal >= 0),
-    calories_max_kcal REAL
-        CHECK (calories_max_kcal IS NULL OR calories_max_kcal >= 0),
     protein_g REAL NOT NULL DEFAULT 0 CHECK (protein_g >= 0),
     fat_g REAL NOT NULL DEFAULT 0 CHECK (fat_g >= 0),
     carbs_g REAL NOT NULL DEFAULT 0 CHECK (carbs_g >= 0),
-    confidence TEXT
-        CHECK (confidence IS NULL OR confidence IN ('high', 'medium', 'low')),
-    meal_rating INTEGER
-        CHECK (meal_rating IS NULL OR meal_rating BETWEEN 1 AND 10),
-    source_event_id TEXT REFERENCES health_events(event_id),
-    source_item_index INTEGER CHECK (source_item_index IS NULL OR source_item_index >= 0),
     notes TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_nutrition_entries_day
     ON nutrition_entries(calendar_day_id);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_nutrition_entries_source_item
-    ON nutrition_entries(source_event_id, source_item_index)
-    WHERE source_event_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS workouts (
     id INTEGER PRIMARY KEY,
@@ -73,13 +42,6 @@ CREATE TABLE IF NOT EXISTS workouts (
         CHECK (average_pace_seconds_per_km IS NULL OR average_pace_seconds_per_km > 0),
     calories_burned_kcal REAL
         CHECK (calories_burned_kcal IS NULL OR calories_burned_kcal >= 0),
-    perceived_exertion INTEGER
-        CHECK (perceived_exertion IS NULL OR perceived_exertion BETWEEN 1 AND 10),
-    average_heart_rate_bpm INTEGER
-        CHECK (average_heart_rate_bpm IS NULL OR average_heart_rate_bpm > 0),
-    max_heart_rate_bpm INTEGER
-        CHECK (max_heart_rate_bpm IS NULL OR max_heart_rate_bpm > 0),
-    source_event_id TEXT UNIQUE REFERENCES health_events(event_id),
     notes TEXT
 );
 
@@ -95,11 +57,6 @@ CREATE TABLE IF NOT EXISTS sleep_entries (
     duration_minutes INTEGER NOT NULL CHECK (duration_minutes >= 0),
     quality_score INTEGER
         CHECK (quality_score IS NULL OR quality_score BETWEEN 1 AND 5),
-    awakenings_count INTEGER
-        CHECK (awakenings_count IS NULL OR awakenings_count >= 0),
-    morning_energy_score INTEGER
-        CHECK (morning_energy_score IS NULL OR morning_energy_score BETWEEN 1 AND 5),
-    source_event_id TEXT REFERENCES health_events(event_id),
     notes TEXT
 );
 
@@ -136,27 +93,6 @@ CREATE TABLE IF NOT EXISTS daily_ratings (
     notes TEXT
 );
 
-CREATE TABLE IF NOT EXISTS daily_wellbeing (
-    id INTEGER PRIMARY KEY,
-    calendar_day_id INTEGER NOT NULL UNIQUE
-        REFERENCES calendar_days(id) ON DELETE CASCADE,
-    energy_score INTEGER
-        CHECK (energy_score IS NULL OR energy_score BETWEEN 1 AND 5),
-    mood_score INTEGER
-        CHECK (mood_score IS NULL OR mood_score BETWEEN 1 AND 5),
-    stress_score INTEGER
-        CHECK (stress_score IS NULL OR stress_score BETWEEN 1 AND 5),
-    digestion_score INTEGER
-        CHECK (digestion_score IS NULL OR digestion_score BETWEEN 1 AND 5),
-    water_ml INTEGER CHECK (water_ml IS NULL OR water_ml >= 0),
-    caffeine_servings REAL
-        CHECK (caffeine_servings IS NULL OR caffeine_servings >= 0),
-    caffeine_last_at TEXT,
-    alcohol_units REAL CHECK (alcohol_units IS NULL OR alcohol_units >= 0),
-    source_event_id TEXT REFERENCES health_events(event_id),
-    notes TEXT
-);
-
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY,
     calendar_day_id INTEGER NOT NULL
@@ -189,18 +125,8 @@ SELECT
     COALESCE(c.draws, 0) AS chess_draws,
     s.duration_minutes AS sleep_minutes,
     s.quality_score AS sleep_quality,
-    s.awakenings_count AS sleep_awakenings,
-    s.morning_energy_score AS morning_energy,
     b.food_bases,
     r.rating AS day_rating,
-    wb.energy_score,
-    wb.mood_score,
-    wb.stress_score,
-    wb.digestion_score,
-    wb.water_ml,
-    wb.caffeine_servings,
-    wb.caffeine_last_at,
-    wb.alcohol_units,
     ROUND(COALESCE(e.expenses_rub, 0), 2) AS expenses_rub,
     d.notes
 FROM calendar_days AS d
@@ -231,7 +157,6 @@ LEFT JOIN (
     GROUP BY calendar_day_id
 ) AS b ON b.calendar_day_id = d.id
 LEFT JOIN daily_ratings AS r ON r.calendar_day_id = d.id
-LEFT JOIN daily_wellbeing AS wb ON wb.calendar_day_id = d.id
 LEFT JOIN (
     SELECT calendar_day_id, SUM(amount_rub) AS expenses_rub
     FROM expenses
@@ -259,10 +184,6 @@ SELECT
     ROUND(SUM(s.workout_minutes), 1) AS workout_minutes,
     ROUND(SUM(s.distance_km), 2) AS distance_km,
     ROUND(AVG(s.day_rating), 2) AS avg_day_rating,
-    ROUND(AVG(s.energy_score), 2) AS avg_energy_score,
-    ROUND(AVG(s.mood_score), 2) AS avg_mood_score,
-    ROUND(AVG(s.stress_score), 2) AS avg_stress_score,
-    ROUND(AVG(s.water_ml), 0) AS avg_water_ml,
     ROUND(SUM(s.expenses_rub), 2) AS expenses_rub
 FROM calendar_days AS d
 JOIN daily_health_summary AS s ON s.diary_date = d.diary_date

@@ -96,15 +96,10 @@ the logging flow lightweight: never turn this into a long questionnaire.
   conceptually separate.
 - Track expenses in rubles under `groceries`, `home`, `transport`, or `other`.
   Preserve the user's category and amount; do not infer missing expenses.
-- Keep reproducible source data in `db/`: schema and historical seed data in
-  SQL, confirmed Telegram events in append-only `db/events/*.jsonl`. Do not
-  commit the generated `data/health_diary.sqlite3` file, pending bot drafts, or
-  downloaded photos/audio.
+- Keep reproducible source data in SQL under `db/`; do not commit the generated
+  `data/health_diary.sqlite3` file.
 - Keep seed operations idempotent. Re-running `./scripts/init_db.sh` must not
   create duplicate entries.
-- Treat `event_id` as the idempotency key for bot events. Never reuse it for a
-  different observation or edit a confirmed event silently; add a correcting
-  event that references the earlier fact in its notes.
 - Store the central estimate in numeric columns. Put ranges, assumptions,
   source details, and confidence in `notes`.
 - Preserve the original user facts when an estimate is corrected. Explain what

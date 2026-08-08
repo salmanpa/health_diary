@@ -333,7 +333,7 @@
     container.replaceChildren();
     const grid = document.createElement("div");
     grid.className = "coverage-grid";
-    const headers = ["День", "Еда", "Сон", "Нагрузка", "Самочув.", "Оценка", "Траты"];
+    const headers = ["День", "Еда", "Сон", "Нагрузка", "Оценка", "Траты"];
     headers.forEach((header) => {
       const cell = document.createElement("div");
       cell.className = "coverage-head";
@@ -349,7 +349,6 @@
         day.nutrition_entry_count > 0,
         Boolean(day.has_sleep),
         Boolean(day.has_workout),
-        Boolean(day.has_wellbeing),
         Boolean(day.has_rating),
         Boolean(day.has_expenses),
       ].forEach((present) => {

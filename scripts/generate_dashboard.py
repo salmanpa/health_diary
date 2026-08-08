@@ -39,14 +39,6 @@ def build_payload(database: Path) -> dict[str, object]:
                 s.sleep_quality,
                 s.food_bases,
                 s.day_rating,
-                s.energy_score,
-                s.mood_score,
-                s.stress_score,
-                s.digestion_score,
-                s.water_ml,
-                s.caffeine_servings,
-                s.caffeine_last_at,
-                s.alcohol_units,
                 s.expenses_rub,
                 (SELECT COUNT(*) FROM nutrition_entries AS n
                  WHERE n.calendar_day_id = d.id) AS nutrition_entry_count,
@@ -58,8 +50,6 @@ def build_payload(database: Path) -> dict[str, object]:
                        WHERE w.calendar_day_id = d.id) AS has_workout,
                 EXISTS(SELECT 1 FROM daily_ratings AS r
                        WHERE r.calendar_day_id = d.id) AS has_rating,
-                EXISTS(SELECT 1 FROM daily_wellbeing AS wb
-                       WHERE wb.calendar_day_id = d.id) AS has_wellbeing,
                 EXISTS(SELECT 1 FROM expenses AS e
                        WHERE e.calendar_day_id = d.id) AS has_expenses
             FROM daily_health_summary AS s
