@@ -28,6 +28,55 @@ CREATE TABLE IF NOT EXISTS nutrition_entries (
 CREATE INDEX IF NOT EXISTS idx_nutrition_entries_day
     ON nutrition_entries(calendar_day_id);
 
+CREATE TABLE IF NOT EXISTS food_reference_profiles (
+    fdc_id INTEGER PRIMARY KEY,
+    food_name TEXT NOT NULL,
+    fiber_g_per_100g REAL CHECK (fiber_g_per_100g IS NULL OR fiber_g_per_100g >= 0),
+    calcium_mg_per_100g REAL CHECK (calcium_mg_per_100g IS NULL OR calcium_mg_per_100g >= 0),
+    iron_mg_per_100g REAL CHECK (iron_mg_per_100g IS NULL OR iron_mg_per_100g >= 0),
+    magnesium_mg_per_100g REAL CHECK (magnesium_mg_per_100g IS NULL OR magnesium_mg_per_100g >= 0),
+    potassium_mg_per_100g REAL CHECK (potassium_mg_per_100g IS NULL OR potassium_mg_per_100g >= 0),
+    sodium_mg_per_100g REAL CHECK (sodium_mg_per_100g IS NULL OR sodium_mg_per_100g >= 0),
+    vitamin_c_mg_per_100g REAL CHECK (vitamin_c_mg_per_100g IS NULL OR vitamin_c_mg_per_100g >= 0),
+    vitamin_d_mcg_per_100g REAL CHECK (vitamin_d_mcg_per_100g IS NULL OR vitamin_d_mcg_per_100g >= 0),
+    vitamin_b12_mcg_per_100g REAL CHECK (vitamin_b12_mcg_per_100g IS NULL OR vitamin_b12_mcg_per_100g >= 0),
+    folate_dfe_mcg_per_100g REAL CHECK (folate_dfe_mcg_per_100g IS NULL OR folate_dfe_mcg_per_100g >= 0),
+    omega3_g_per_100g REAL CHECK (omega3_g_per_100g IS NULL OR omega3_g_per_100g >= 0),
+    source_name TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_release TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS nutrition_components (
+    id INTEGER PRIMARY KEY,
+    nutrition_entry_id INTEGER NOT NULL
+        REFERENCES nutrition_entries(id) ON DELETE CASCADE,
+    component_name TEXT NOT NULL,
+    estimated_weight_g REAL NOT NULL CHECK (estimated_weight_g > 0),
+    reference_fdc_id INTEGER
+        REFERENCES food_reference_profiles(fdc_id),
+    confidence TEXT NOT NULL
+        CHECK (confidence IN ('high', 'medium', 'low')),
+    notes TEXT,
+    UNIQUE (nutrition_entry_id, component_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_nutrition_components_entry
+    ON nutrition_components(nutrition_entry_id);
+
+CREATE TABLE IF NOT EXISTS nutrient_reference_values (
+    nutrient_code TEXT PRIMARY KEY,
+    nutrient_name TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    daily_reference REAL,
+    reference_type TEXT,
+    comparison_mode TEXT NOT NULL DEFAULT 'minimum'
+        CHECK (comparison_mode IN ('minimum', 'upper', 'informational')),
+    source_url TEXT NOT NULL,
+    notes TEXT,
+    sort_order INTEGER NOT NULL UNIQUE
+);
+
 CREATE TABLE IF NOT EXISTS workouts (
     id INTEGER PRIMARY KEY,
     calendar_day_id INTEGER NOT NULL
@@ -127,8 +176,6 @@ SELECT
     ROUND(COALESCE(w.workout_minutes, 0), 1) AS workout_minutes,
     ROUND(COALESCE(w.distance_km, 0), 2) AS distance_km,
     ROUND(COALESCE(w.workout_calories_kcal, 0), 1) AS workout_calories_kcal,
-    w.average_perceived_exertion,
-    COALESCE(w.intensity_record_count, 0) AS intensity_record_count,
     COALESCE(c.games_played, 0) AS chess_games,
     COALESCE(c.wins, 0) AS chess_wins,
     COALESCE(c.draws, 0) AS chess_draws,
@@ -136,7 +183,6 @@ SELECT
     s.quality_score AS sleep_quality,
     b.food_bases,
     r.rating AS day_rating,
-    ROUND(COALESCE(e.expenses_rub, 0), 2) AS expenses_rub,
     d.notes
 FROM calendar_days AS d
 LEFT JOIN (
@@ -155,11 +201,7 @@ LEFT JOIN (
         COUNT(*) AS workout_count,
         SUM(duration_minutes) AS workout_minutes,
         SUM(COALESCE(distance_km, 0)) AS distance_km,
-        SUM(COALESCE(calories_burned_kcal, 0)) AS workout_calories_kcal,
-        ROUND(AVG(perceived_exertion), 1) AS average_perceived_exertion,
-        SUM(CASE WHEN perceived_exertion IS NOT NULL
-                  OR average_heart_rate_bpm IS NOT NULL
-                 THEN 1 ELSE 0 END) AS intensity_record_count
+        SUM(COALESCE(calories_burned_kcal, 0)) AS workout_calories_kcal
     FROM workouts
     GROUP BY calendar_day_id
 ) AS w ON w.calendar_day_id = d.id
@@ -171,11 +213,36 @@ LEFT JOIN (
     GROUP BY calendar_day_id
 ) AS b ON b.calendar_day_id = d.id
 LEFT JOIN daily_ratings AS r ON r.calendar_day_id = d.id
-LEFT JOIN (
-    SELECT calendar_day_id, SUM(amount_rub) AS expenses_rub
-    FROM expenses
-    GROUP BY calendar_day_id
-) AS e ON e.calendar_day_id = d.id;
+;
+
+DROP VIEW IF EXISTS daily_nutrient_summary;
+
+CREATE VIEW daily_nutrient_summary AS
+SELECT
+    d.diary_date,
+    COUNT(c.id) AS component_count,
+    SUM(CASE WHEN c.reference_fdc_id IS NOT NULL THEN 1 ELSE 0 END)
+        AS analyzed_component_count,
+    ROUND(SUM(c.estimated_weight_g), 1) AS component_weight_g,
+    ROUND(SUM(CASE WHEN c.reference_fdc_id IS NOT NULL
+                   THEN c.estimated_weight_g ELSE 0 END), 1)
+        AS analyzed_component_weight_g,
+    ROUND(SUM(c.estimated_weight_g * p.fiber_g_per_100g / 100.0), 2) AS fiber_g,
+    ROUND(SUM(c.estimated_weight_g * p.calcium_mg_per_100g / 100.0), 1) AS calcium_mg,
+    ROUND(SUM(c.estimated_weight_g * p.iron_mg_per_100g / 100.0), 2) AS iron_mg,
+    ROUND(SUM(c.estimated_weight_g * p.magnesium_mg_per_100g / 100.0), 1) AS magnesium_mg,
+    ROUND(SUM(c.estimated_weight_g * p.potassium_mg_per_100g / 100.0), 1) AS potassium_mg,
+    ROUND(SUM(c.estimated_weight_g * p.sodium_mg_per_100g / 100.0), 1) AS sodium_mg,
+    ROUND(SUM(c.estimated_weight_g * p.vitamin_c_mg_per_100g / 100.0), 1) AS vitamin_c_mg,
+    ROUND(SUM(c.estimated_weight_g * p.vitamin_d_mcg_per_100g / 100.0), 2) AS vitamin_d_mcg,
+    ROUND(SUM(c.estimated_weight_g * p.vitamin_b12_mcg_per_100g / 100.0), 2) AS vitamin_b12_mcg,
+    ROUND(SUM(c.estimated_weight_g * p.folate_dfe_mcg_per_100g / 100.0), 1) AS folate_dfe_mcg,
+    ROUND(SUM(c.estimated_weight_g * p.omega3_g_per_100g / 100.0), 3) AS omega3_g
+FROM calendar_days AS d
+LEFT JOIN nutrition_entries AS n ON n.calendar_day_id = d.id
+LEFT JOIN nutrition_components AS c ON c.nutrition_entry_id = n.id
+LEFT JOIN food_reference_profiles AS p ON p.fdc_id = c.reference_fdc_id
+GROUP BY d.id, d.diary_date;
 
 DROP VIEW IF EXISTS monthly_health_summary;
 
@@ -198,10 +265,7 @@ SELECT
     ROUND(SUM(s.workout_minutes), 1) AS workout_minutes,
     ROUND(SUM(s.distance_km), 2) AS distance_km,
     ROUND(SUM(s.workout_calories_kcal), 1) AS workout_calories_kcal,
-    ROUND(AVG(s.average_perceived_exertion), 1) AS avg_perceived_exertion,
-    SUM(s.intensity_record_count) AS intensity_record_count,
-    ROUND(AVG(s.day_rating), 2) AS avg_day_rating,
-    ROUND(SUM(s.expenses_rub), 2) AS expenses_rub
+    ROUND(AVG(s.day_rating), 2) AS avg_day_rating
 FROM calendar_days AS d
 JOIN daily_health_summary AS s ON s.diary_date = d.diary_date
 GROUP BY SUBSTR(d.diary_date, 1, 7);

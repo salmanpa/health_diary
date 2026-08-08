@@ -21,7 +21,7 @@
       <a href="#daily">По дням</a>
       <a href="#nutrition">Питание</a>
       <a href="#recovery">Сон и нагрузка</a>
-      <a href="#gaps">Пробелы</a>
+      <a href="#nutrients">Элементы питания</a>
     </nav>
     <label class="period-control" for="monthSelect">
       <span>Период</span>
@@ -48,8 +48,7 @@
       <article class="kpi"><span>Калории</span><strong id="caloriesKpi">—</strong><small>среднее завершённых дней</small></article>
       <article class="kpi"><span>Средние Б / Ж / У</span><strong id="macrosKpi">—</strong><small>граммов в день</small></article>
       <article class="kpi"><span>Сон</span><strong id="sleepKpi">—</strong><small id="sleepMeta">по записанным дням</small></article>
-      <article class="kpi"><span>Тренировки</span><strong id="trainingKpi">—</strong><small id="trainingMeta">—</small></article>
-      <article class="kpi"><span>Интенсивность</span><strong id="intensityKpi">—</strong><small id="intensityMeta">RPE или пульс</small></article>
+      <article class="kpi"><span>Тренировки / нед</span><strong id="trainingKpi">—</strong><small id="trainingMeta">—</small></article>
     </section>
 
     <section class="section" id="daily">
@@ -69,7 +68,6 @@
                 <th>Углеводы</th>
                 <th>Сон</th>
                 <th>Тренировка</th>
-                <th>Интенсивность</th>
                 <th>Оценка</th>
               </tr>
             </thead>
@@ -100,7 +98,7 @@
     <section class="section" id="recovery">
       <div class="section-head">
         <div><p>03 · Сон и нагрузка</p><h2>Восстановление и активность</h2></div>
-        <p>Продолжительность и объём видны напрямую. Интенсивность считается известной только при наличии RPE или пульса.</p>
+        <p>Показываем длительность каждой тренировки и оценку энергозатрат. Данные устройства или пользователя имеют приоритет перед расчётом.</p>
       </div>
       <div class="chart-grid">
         <article class="panel panel-wide panel-dark">
@@ -108,33 +106,34 @@
           <div class="canvas-wrap"><canvas id="sleepChart" role="img" aria-label="Продолжительность сна по дням"></canvas></div>
         </article>
         <article class="panel panel-wide">
-          <div class="panel-head"><div><span>Объём нагрузки</span><strong>Минуты тренировок</strong></div><div class="legend"><i class="dot activity"></i>минуты</div></div>
+          <div class="panel-head"><div><span>Время тренировок</span><strong>Минуты по дням</strong></div><div class="legend"><i class="dot activity"></i>минуты</div></div>
           <div class="canvas-wrap"><canvas id="activityChart" role="img" aria-label="Продолжительность тренировок по дням"></canvas></div>
         </article>
       </div>
       <div class="workout-list" id="workoutList"></div>
     </section>
 
-    <section class="section" id="activity-nutrition">
+    <section class="section" id="nutrients">
       <div class="section-head">
-        <div><p>04 · Связи</p><h2>Активность и питание</h2></div>
-        <p>Сравнение описывает совпадения внутри дневника и не доказывает причинно-следственную связь.</p>
+        <div><p>04 · Элементы питания</p><h2>Клетчатка, витамины и минералы</h2></div>
+        <p>Расчёты восстановлены из состава блюд и справочника продуктов. Это оценка поступления с едой, а не диагностика дефицита.</p>
       </div>
-      <div class="relationship-grid">
-        <article class="panel relationship-chart">
-          <div class="panel-head"><div><span>Дневной контекст</span><strong>Калории относительно минут нагрузки</strong></div></div>
-          <div class="canvas-wrap"><canvas id="relationshipChart" role="img" aria-label="Связь дневных калорий и минут тренировок"></canvas></div>
+      <div class="nutrient-summary" id="nutrientSummary"></div>
+      <article class="panel nutrient-table-panel">
+        <div class="panel-head"><div><span>Динамика</span><strong>По дням · среднее только завершённых</strong></div><span id="nutrientCoverageNote">—</span></div>
+        <div class="table-scroll"><table class="nutrient-table"><thead id="nutrientTableHead"></thead><tbody id="nutrientTableBody"></tbody></table></div>
+      </article>
+      <div class="nutrient-detail-grid">
+        <article class="panel">
+          <div class="panel-head"><div><span>Источники</span><strong>Что внесло основной вклад</strong></div></div>
+          <div class="nutrient-sources" id="nutrientSources"></div>
         </article>
-        <div class="comparison-grid" id="activityNutritionCards"></div>
+        <article class="panel nutrient-method">
+          <div class="panel-head"><div><span>Как читать</span><strong>Ограничения оценки</strong></div></div>
+          <p>Проценты сравнивают оценённое поступление с пищевым ориентиром. Низкое значение за несколько дней не подтверждает дефицит, а высокое не учитывает усвоение.</p>
+          <p>Добавленная соль, соусы, рецептура и обогащение продуктов часто неизвестны. Поэтому натрий и некоторые микронутриенты показаны как известный минимум.</p>
+        </article>
       </div>
-    </section>
-
-    <section class="section" id="gaps">
-      <div class="section-head">
-        <div><p>05 · Элементы питания</p><h2>Что можно и нельзя оценить</h2></div>
-        <p>Отсутствие структурной записи — не доказательство дефицита. Диагностика дефицитов требует подходящих данных и иногда анализов.</p>
-      </div>
-      <div class="gap-grid" id="nutritionGaps"></div>
       <article class="panel diversity-panel">
         <div class="panel-head"><div><span>Разнообразие</span><strong>Зафиксированные пищевые основы</strong></div><span>дней периода</span></div>
         <div class="base-grid" id="foodBases"></div>
@@ -143,7 +142,7 @@
 
     <section class="section" id="quality">
       <div class="section-head">
-        <div><p>06 · Качество данных</p><h2>Насколько надёжен срез</h2></div>
+        <div><p>05 · Качество данных</p><h2>Насколько надёжен срез</h2></div>
         <p>Главные ограничения показываются рядом с метриками, а не скрываются в итоговых средних.</p>
       </div>
       <div class="quality-grid">

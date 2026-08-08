@@ -14,6 +14,7 @@ trap cleanup EXIT HUP INT TERM
 mkdir -p "$project_dir/data"
 sqlite3 "$temporary_database" < "$project_dir/db/schema.sql"
 sqlite3 "$temporary_database" < "$project_dir/db/seed.sql"
+sqlite3 "$temporary_database" < "$project_dir/db/nutrition_components.sql"
 sqlite3 "$temporary_database" "PRAGMA optimize; PRAGMA integrity_check;"
 
 mv "$temporary_database" "$database_path"

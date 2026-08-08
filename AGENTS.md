@@ -80,6 +80,25 @@ For every meal description or photo:
 12. Add the measurement to the repository history and update the daily totals.
 13. Mark every applicable daily food base independently as `meat`, `chicken`,
    or `fish`. Do not infer a base when the ingredient is ambiguous.
+14. Save the concrete edible components of the meal in
+    `nutrition_components`, with a central weight estimate and confidence for
+    each component. Keep oils, dressings, sauces, fillings, breading, drinks,
+    and supplements separate when they materially affect the analysis. An
+    unknown recipe part must remain an explicit unlinked component rather than
+    disappearing from the record.
+15. Link each sufficiently identified component to a reproducible food profile
+    in `food_reference_profiles`. Prefer a supplied package label for that
+    exact product, then USDA FoodData Central or another authoritative food-
+    composition database. Preserve the source, release, assumptions, and the
+    nearest-food substitution in notes; never present database precision as a
+    measurement of the photographed meal.
+16. Estimate, when the component evidence supports it, fiber, calcium, iron,
+    magnesium, potassium, sodium, vitamins C, D and B12, folate, and omega-3.
+    Also note analytically useful features such as fruit and vegetable variety,
+    whole grains, legumes, nuts or seeds, highly processed products, and likely
+    added salt or sugar. If a component cannot be linked reliably, exclude it
+    from the micronutrient total and describe the result as a known estimated
+    minimum.
 
 When the user can prepare the photo, suggest—but do not require—one overhead
 photo, one side-angle photo for depth, the plate/bowl diameter, and a short note
@@ -96,13 +115,23 @@ the logging flow lightweight: never turn this into a long questionnaire.
   conceptually separate.
 - Track expenses in rubles under `groceries`, `home`, `transport`, or `other`.
   Preserve the user's category and amount; do not infer missing expenses.
+  Expenses are private raw records: exclude them from health summary views,
+  routine statistics, coaching summaries, and the dashboard unless the user
+  explicitly requests a separate finance report.
 - For workouts, record perceived exertion on a 1–10 RPE scale and average or
   maximum heart rate only when the user or device supplies them. Duration,
   distance, pace, or calories alone are workload measures, not proof of
   physiological intensity; keep intensity unknown when RPE and heart rate are
   absent.
+- For workout calories, preserve a value supplied by the user or device. If it
+  is absent, estimate calories only when duration and the relevant workload
+  data are available, label the result as calculated, record the method and
+  assumptions, and keep the estimate separate from reported calories.
 - Keep reproducible source data in SQL under `db/`; do not commit the generated
   `data/health_diary.sqlite3` file.
+- Keep historical component reconstruction and reference nutrient profiles in
+  `db/nutrition_components.sql`; new meal records must add or update their
+  component rows there as part of the same diary change.
 - Keep seed operations idempotent. Re-running `./scripts/init_db.sh` must not
   create duplicate entries.
 - Store the central estimate in numeric columns. Put ranges, assumptions,
@@ -116,9 +145,14 @@ the logging flow lightweight: never turn this into a long questionnaire.
   requires a numeric macro value, use `0` only with an explicit note that it is
   unknown, and describe the daily macro total as a known minimum rather than a
   complete total.
-- After changes, initialize a clean temporary database, apply seed data twice,
-  run `PRAGMA integrity_check`, and inspect `daily_health_summary` for the
-  affected dates.
+- Treat low calculated micronutrient intake as a pattern worth observing, not
+  as proof of deficiency. Use several completed days, show component coverage
+  and uncertainty, and recommend a qualified clinician or appropriate testing
+  for diagnosis or condition-specific concerns.
+- After changes, initialize a clean temporary database, apply `db/seed.sql`
+  and `db/nutrition_components.sql` twice, run `PRAGMA integrity_check`, and
+  inspect `daily_health_summary` and `daily_nutrient_summary` for the affected
+  dates.
 
 ## Dashboard update policy
 
@@ -141,7 +175,9 @@ When enough data exists, summarize:
 - meal distribution and major uncertainty ranges;
 - sleep and training context;
 - daily food bases (`meat`, `chicken`, and `fish`);
-- the user-provided 1–5 day rating and expenses by category;
+- estimated fiber and micronutrient intake with coverage and uncertainty when
+  component data exists;
+- the user-provided 1–5 day rating;
 - useful patterns across recent history;
 - the next small adjustment most likely to improve consistency.
 

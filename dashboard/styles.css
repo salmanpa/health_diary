@@ -193,7 +193,7 @@ h1 {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: var(--line);
   border: 1px solid var(--line);
   gap: 1px;
@@ -258,7 +258,7 @@ h1 {
 
 .daily-table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 960px;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
@@ -402,55 +402,53 @@ canvas { display: block; width: 100%; height: 300px; }
 .workout-name strong, .workout-detail strong { font-size: 13px; }
 .workout-detail.is-missing strong { color: var(--orange); }
 
-.relationship-grid {
+.nutrient-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
-  gap: 16px;
-}
-
-.comparison-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   background: var(--line);
   border: 1px solid var(--line);
   gap: 1px;
 }
 
-.comparison-card {
-  min-height: 150px;
+.nutrient-card {
+  min-height: 168px;
   padding: 18px;
   background: var(--surface);
+  box-shadow: inset 0 3px 0 transparent;
 }
 
-.comparison-card span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-.comparison-card strong { display: block; margin: 17px 0 7px; font-size: 20px; letter-spacing: -0.035em; }
-.comparison-card p { margin-bottom: 0; color: var(--muted); font-size: 11px; }
+.nutrient-card[data-state="low"] { box-shadow: inset 0 3px 0 var(--orange); }
+.nutrient-card[data-state="watch"] { box-shadow: inset 0 3px 0 var(--yellow); }
+.nutrient-card[data-state="reached"] { box-shadow: inset 0 3px 0 var(--green); }
+.nutrient-name { color: var(--muted); font-size: 11px; }
+.nutrient-card strong { display: block; margin: 18px 0 5px; font-size: 24px; letter-spacing: -0.04em; }
+.nutrient-card small { color: var(--green); font-size: 11px; font-weight: 720; }
+.nutrient-card[data-state="low"] small { color: var(--orange); }
+.nutrient-card[data-state="watch"] small { color: #9a7620; }
+.nutrient-card p { margin: 16px 0 0; color: var(--muted); font-size: 10px; }
 
-.gap-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
+.nutrient-table-panel { margin-top: 16px; }
+.nutrient-table { width: 100%; min-width: 980px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.nutrient-table th, .nutrient-table td { min-width: 92px; padding: 11px; text-align: center; border: 1px solid var(--line); }
+.nutrient-table th { color: var(--muted); background: #f4f6f2; font-size: 10px; text-transform: uppercase; }
+.nutrient-table th:first-child, .nutrient-table td:first-child { min-width: 150px; text-align: left; }
+.nutrient-table td strong, .nutrient-table td span, .nutrient-row-label strong, .nutrient-row-label span { display: block; }
+.nutrient-table td strong { font-size: 12px; }
+.nutrient-table td span, .nutrient-row-label span { color: var(--muted); font-size: 9px; }
+.nutrient-table td[data-state="low"] { background: #fbefeb; }
+.nutrient-table td[data-state="watch"] { background: #faf6e8; }
+.nutrient-table td[data-state="reached"] { background: #edf6f1; }
+.nutrient-table .is-in-progress { background-image: linear-gradient(135deg, rgba(224,119,79,.08) 25%, transparent 25%, transparent 50%, rgba(224,119,79,.08) 50%, rgba(224,119,79,.08) 75%, transparent 75%); background-size: 8px 8px; }
+.nutrient-average { background: #eef3ef; }
 
-.gap-card {
-  min-height: 220px;
-  padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-}
-
-.gap-status {
-  display: inline-flex;
-  padding: 4px 7px;
-  color: var(--orange);
-  background: var(--danger-soft);
-  font-size: 10px;
-  font-weight: 750;
-  text-transform: uppercase;
-}
-
-.gap-card h3 { margin: 38px 0 8px; font-size: 20px; letter-spacing: -0.035em; }
-.gap-card p { margin-bottom: 0; color: var(--muted); font-size: 12px; }
+.nutrient-detail-grid { display: grid; grid-template-columns: 1.35fr .65fr; gap: 16px; margin-top: 16px; }
+.nutrient-sources { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 30px; }
+.source-group > strong { display: block; margin-bottom: 9px; font-size: 13px; }
+.source-row { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 11px; }
+.source-row span { color: var(--muted); }
+.source-row b { white-space: nowrap; }
+.nutrient-method p { color: var(--muted); font-size: 12px; }
+.nutrient-method p:last-child { margin-bottom: 0; }
 
 .diversity-panel { margin-top: 16px; }
 
@@ -480,14 +478,14 @@ canvas { display: block; width: 100%; height: 300px; }
 
 .coverage-grid {
   display: grid;
-  grid-template-columns: 58px repeat(6, minmax(58px, 1fr));
+  grid-template-columns: 58px repeat(5, minmax(64px, 1fr));
   align-items: center;
   min-width: 560px;
 }
 
 #coverageTable { overflow-x: auto; }
 .coverage-grid > div { display: grid; min-height: 38px; place-items: center; border-bottom: 1px solid var(--line); }
-.coverage-grid > div:nth-last-child(-n + 7) { border-bottom: 0; }
+.coverage-grid > div:nth-last-child(-n + 6) { border-bottom: 0; }
 .coverage-head { color: var(--muted); font-size: 9px; font-weight: 760; text-transform: uppercase; }
 .coverage-date { font-weight: 760; font-size: 12px; }
 .coverage-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
@@ -526,8 +524,8 @@ footer {
   .topbar nav { display: none; }
   .topbar { grid-template-columns: 1fr auto; }
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-  .gap-grid { grid-template-columns: repeat(2, 1fr); }
-  .relationship-grid, .quality-grid { grid-template-columns: 1fr; }
+  .nutrient-summary { grid-template-columns: repeat(3, 1fr); }
+  .nutrient-detail-grid, .quality-grid { grid-template-columns: 1fr; }
   .base-grid { grid-template-columns: repeat(3, 1fr); }
   .base-note { grid-column: 1 / -1; }
 }
@@ -545,7 +543,7 @@ footer {
   .analysis-strip { grid-template-columns: 1fr; }
   .workout-row { grid-template-columns: 54px minmax(0, 1fr) minmax(120px, auto); }
   .workout-detail:last-child { grid-column: 2 / -1; }
-  .gap-card { min-height: 190px; }
+  .nutrient-summary { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -558,10 +556,7 @@ footer {
   .panel-head { display: block; }
   .legend { margin-top: 10px; }
   .canvas-wrap, canvas { min-height: 260px; height: 260px; }
-  .comparison-grid, .gap-grid, .quality-cards { grid-template-columns: 1fr; }
-  .comparison-card { min-height: 125px; }
-  .gap-card { min-height: 170px; }
-  .gap-card h3 { margin-top: 25px; }
+  .nutrient-summary, .nutrient-sources, .quality-cards { grid-template-columns: 1fr; }
   .base-grid { grid-template-columns: 1fr; }
   .base-note { grid-column: auto; }
   .workout-row { grid-template-columns: 48px minmax(0, 1fr); }
