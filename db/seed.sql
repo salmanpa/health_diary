@@ -979,6 +979,45 @@ FROM calendar_days
 WHERE diary_date = '2026-08-08'
 ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
 
+INSERT INTO workouts (
+    calendar_day_id, workout_type, time_of_day, started_at,
+    duration_minutes, calories_burned_kcal, average_heart_rate_bpm, notes
+)
+SELECT
+    id, 'functional_strength_training', 'afternoon', '2026-08-08 16:43:00',
+    49.7167, 277, 108,
+    'Функционально-силовая тренировка по данным Apple Fitness: 16:43–17:33, точная длительность 49:43; активные калории — 277 ккал, всего — 348 ккал, средний пульс — 108 уд/мин. В calories_burned_kcal сохранены активные калории; RPE и максимальный пульс не указаны, поэтому субъективная интенсивность не определена.'
+FROM calendar_days
+WHERE diary_date = '2026-08-08'
+  AND NOT EXISTS (
+      SELECT 1 FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'functional_strength_training'
+        AND started_at = '2026-08-08 16:43:00'
+        AND duration_minutes = 49.7167
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'snack', 'Банан', 120,
+    105, 1.3, 0.4, 27,
+    'Пользователь сообщил об одном банане без массы и фотографии. Принят средний банан: центрально 120 г съедобной части; ориентировочно 90–150 г, 80–135 ккал, Б 1–2 г, Ж 0–0,5 г, У 20–35 г. Уверенность средняя; главная неопределённость — фактический размер и масса без кожуры. Оценка перекуса: 7/10 — удобный источник углеводов и калия после тренировки, но почти без белка.'
+FROM calendar_days
+WHERE diary_date = '2026-08-08'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'snack'
+        AND food_name = 'Банан'
+  );
+
+UPDATE calendar_days
+SET notes = 'Внесены сон, завтрак, функционально-силовая тренировка и перекус (банан). Порции, калории и БЖУ питания оценочные; день остаётся в процессе заполнения.'
+WHERE diary_date = '2026-08-08';
+
 UPDATE calendar_days
 SET status = CASE
     WHEN diary_date BETWEEN '2026-08-04' AND '2026-08-07' THEN 'complete'
