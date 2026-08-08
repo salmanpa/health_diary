@@ -960,3 +960,10 @@ SELECT id, 'fish', 'Рыба присутствует на завтрак: ту�
 FROM calendar_days
 WHERE diary_date = '2026-08-08'
 ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+UPDATE calendar_days
+SET status = CASE
+    WHEN diary_date BETWEEN '2026-08-04' AND '2026-08-07' THEN 'complete'
+    ELSE 'in_progress'
+END
+WHERE diary_date BETWEEN '2026-08-04' AND '2026-08-08';

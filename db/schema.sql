@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS calendar_days (
     id INTEGER PRIMARY KEY,
     diary_date TEXT NOT NULL UNIQUE
         CHECK (diary_date = date(diary_date)),
+    status TEXT NOT NULL DEFAULT 'in_progress'
+        CHECK (status IN ('in_progress', 'complete')),
     notes TEXT
 );
 
@@ -110,6 +112,7 @@ DROP VIEW IF EXISTS daily_health_summary;
 CREATE VIEW daily_health_summary AS
 SELECT
     d.diary_date,
+    d.status,
     ROUND(COALESCE(n.calories_kcal, 0), 1) AS calories_kcal,
     ROUND(COALESCE(n.protein_g, 0), 1) AS protein_g,
     ROUND(COALESCE(n.fat_g, 0), 1) AS fat_g,
@@ -159,3 +162,29 @@ LEFT JOIN (
     FROM expenses
     GROUP BY calendar_day_id
 ) AS e ON e.calendar_day_id = d.id;
+
+DROP VIEW IF EXISTS monthly_health_summary;
+
+CREATE VIEW monthly_health_summary AS
+SELECT
+    SUBSTR(d.diary_date, 1, 7) AS diary_month,
+    COUNT(*) AS tracked_days,
+    SUM(CASE WHEN d.status = 'complete' THEN 1 ELSE 0 END) AS complete_days,
+    ROUND(AVG(CASE WHEN d.status = 'complete' THEN s.calories_kcal END), 1)
+        AS avg_calories_kcal_complete,
+    ROUND(AVG(CASE WHEN d.status = 'complete' THEN s.protein_g END), 1)
+        AS avg_protein_g_complete,
+    ROUND(AVG(CASE WHEN d.status = 'complete' THEN s.fat_g END), 1)
+        AS avg_fat_g_complete,
+    ROUND(AVG(CASE WHEN d.status = 'complete' THEN s.carbs_g END), 1)
+        AS avg_carbs_g_complete,
+    ROUND(AVG(CASE WHEN s.sleep_minutes IS NOT NULL
+        THEN s.sleep_minutes / 60.0 END), 2) AS avg_sleep_hours_recorded,
+    SUM(s.workout_count) AS workout_count,
+    ROUND(SUM(s.workout_minutes), 1) AS workout_minutes,
+    ROUND(SUM(s.distance_km), 2) AS distance_km,
+    ROUND(AVG(s.day_rating), 2) AS avg_day_rating,
+    ROUND(SUM(s.expenses_rub), 2) AS expenses_rub
+FROM calendar_days AS d
+JOIN daily_health_summary AS s ON s.diary_date = d.diary_date
+GROUP BY SUBSTR(d.diary_date, 1, 7);

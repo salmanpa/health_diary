@@ -25,29 +25,66 @@ changes the recommendation.
 
 For every meal description or photo:
 
-1. Identify the foods and preparation methods that are known or reasonably
-   visible. Separate observations from assumptions.
-2. Estimate portion size and weight. When a saucer is visible or explicitly
-   provided as scale, use its approximate diameter and perspective to estimate
-   food dimensions. If its real size is unknown, give a range and state the
-   assumed saucer size instead of presenting an exact measurement.
-3. Estimate calories, protein, fat, and carbohydrates for each item and for the
-   whole meal. Prefer a plausible range plus a central estimate when portions,
-   oil, sauces, or recipes are uncertain.
-4. State the main uncertainty drivers, especially hidden oil, dressings,
-   fillings, cooking method, and portion depth.
-5. Rate the meal from 1 to 10 in the context of the full day and the user's
+1. Build an evidence list before calculating anything. Separate each fact into
+   `user supplied`, `visible/readable in the photo`, or `assumption`. User-
+   supplied weights, ingredients, preparation methods, and package labels take
+   precedence over visual estimates. Never contradict the user's description
+   only because the image is ambiguous.
+2. Inspect the full image and zoom/crop mentally where needed. Count discrete
+   items; read labels only when the characters are genuinely legible; identify
+   foods, cooking methods, containers, and possible calorie-dense additions.
+   Do not invent ingredients hidden under other food or outside the frame.
+3. Estimate every meaningful component separately. Prefer this evidence order:
+   measured weight or volume; readable label/recipe; known package or standard
+   unit; a reference object of known dimensions in the same plane; visual
+   estimate. Record separate `nutrition_entries` for distinct components when
+   practical, using the same `meal_type` and `eaten_at` to keep the meal grouped.
+4. Treat photo geometry conservatively:
+   - correct mentally for camera angle and perspective; do not compare objects
+     that are at noticeably different distances from the camera;
+   - use a plate, saucer, bowl, cutlery, fruit, or coin as scale only when its
+     real size is supplied or reliably standard; otherwise state a realistic
+     size range and propagate it into the portion range;
+   - do not infer bowl volume, soup weight, or the mass of a mound from visible
+     surface area alone; depth and container fill level must be considered;
+   - do not use cherry tomatoes, cheese balls, or other variable-size foods as
+     precise rulers;
+   - distinguish food weight from plate/container weight and edible weight from
+     peel, bones, liquid, or drained packing medium.
+5. Give a low/high portion range and a central estimate for each component.
+   Match numerical precision to evidence: visual estimates normally round
+   weight and calories to 5–10 g/kcal and macros to 0.5–1 g. Decimal-level
+   precision is acceptable only when calculated from a supplied label and
+   measured weight.
+6. Estimate calories, protein, fat, and carbohydrates for each component and
+   the whole meal. Cross-check that calculated calories are broadly compatible
+   with `4 * protein + 9 * fat + 4 * carbohydrates`; investigate or explain a
+   discrepancy above about 10%. Give separate scenarios when an uncertain oil,
+   dressing, sauce, filling, or cooking fat can materially change the result.
+7. Ask at most one focused question before finalizing when the answer would
+   likely shift the meal estimate by more than about 20% or 150 kcal. The most
+   valuable questions are usually the plate/bowl diameter, food or package
+   weight, amount of oil/dressing, recipe, whether all food was eaten, or a
+   clearer photo of the label. Otherwise record a clearly labeled estimate.
+8. State confidence (`high`, `medium`, or `low`) and the one to three largest
+   uncertainty drivers. A wide honest range is preferable to false precision.
+9. Rate the meal from 1 to 10 in the context of the full day and the user's
    activity. Briefly explain the rating using protein, vegetables/fiber,
    energy density, food variety, and likely added fat, sugar, or salt. Avoid
    moral labels such as "good" or "bad" food.
-6. Give one to three specific, achievable recommendations. Consider recovery
+10. Give one to three specific, achievable recommendations. Consider recovery
    needs after running or gym sessions and the user's sedentary workday.
-7. Add the measurement to the repository history and update the daily totals.
-8. Mark every applicable daily food base independently as `meat`, `chicken`,
+11. Present the result in this order: observed facts; assumptions; component
+    table with portion range and central calories/macros; meal total and range;
+    confidence and uncertainty; rating; recommendations; what was recorded.
+12. Add the measurement to the repository history and update the daily totals.
+13. Mark every applicable daily food base independently as `meat`, `chicken`,
    or `fish`. Do not infer a base when the ingredient is ambiguous.
 
-If the evidence is insufficient, ask a focused question when it would
-materially improve the result. Otherwise record a clearly labeled estimate.
+When the user can prepare the photo, suggest—but do not require—one overhead
+photo, one side-angle photo for depth, the plate/bowl diameter, and a short note
+about ingredients, oil/dressing, package weight, and how much was eaten. Keep
+the logging flow lightweight: never turn this into a long questionnaire.
 
 ## Repository data rules
 
@@ -65,6 +102,11 @@ materially improve the result. Otherwise record a clearly labeled estimate.
   create duplicate entries.
 - Store the central estimate in numeric columns. Put ranges, assumptions,
   source details, and confidence in `notes`.
+- Preserve the original user facts when an estimate is corrected. Explain what
+  changed and why; do not silently replace a measured or user-supplied value.
+- Mark a calendar day as `complete` only after the user has finished logging
+  it or has provided a final day rating. Keep the current day `in_progress`
+  while meals or other daily records may still arrive.
 - Never silently treat an unknown value as measured. If the current schema
   requires a numeric macro value, use `0` only with an explicit note that it is
   unknown, and describe the daily macro total as a known minimum rather than a
