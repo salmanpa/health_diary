@@ -586,7 +586,7 @@ ON CONFLICT (calendar_day_id) DO UPDATE SET
     notes = excluded.notes;
 
 INSERT INTO daily_ratings (calendar_day_id, rating, notes)
-SELECT id, 4, 'Оценка дня пользователем: 4 из 5.'
+SELECT id, 3, 'Итоговая оценка дня пользователем: 3 из 5. Скорректировано с ранее указанной оценки 4 из 5 по новому сообщению пользователя.'
 FROM calendar_days WHERE diary_date = '2026-08-06'
 ON CONFLICT (calendar_day_id) DO UPDATE SET
     rating = excluded.rating,
@@ -1061,6 +1061,62 @@ WHERE calendar_day_id = (SELECT id FROM calendar_days WHERE diary_date = '2026-0
 UPDATE calendar_days
 SET notes = 'Внесены сон, завтрак, функционально-силовая тренировка, обед и перекусы (банан и половина манго). Порции, калории и БЖУ питания оценочные; день остаётся в процессе заполнения.'
 WHERE diary_date = '2026-08-08';
+
+-- Дополнение к ужину и завершение дневника за 6 августа.
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'dinner', '2 варёных яйца', 100,
+    156, 12.6, 10.6, 1.1,
+    'Количество указано пользователем; масса не указана. Центрально приняты 2 средних яйца и 100 г съедобной части. Ориентировочно 88–110 г, 140–175 ккал, Б 11,5–14 г, Ж 9,5–12 г, У 0,8–1,3 г. Уверенность средняя; главная неопределённость — размер яиц.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = '2 варёных яйца'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'dinner', 'Киви', 75,
+    46, 0.8, 0.4, 11,
+    'Количество указано пользователем; масса не указана. Центрально принят 1 средний киви и 75 г съедобной части. Ориентировочно 60–100 г, 35–60 ккал, Б 0,6–1,1 г, Ж 0,3–0,5 г, У 8–14 г. Уверенность средняя; главная неопределённость — размер плода.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = 'Киви'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT
+    id, 'dinner', '3 ореха пекана', 9,
+    62, 0.8, 6.5, 1.3,
+    'Количество указано пользователем; масса и то, считались ли половинки ядра отдельными орехами, не указаны. Центрально приняты 3 целых ядра (6 половинок), около 9 г. Ориентировочно 5–12 г, 35–85 ккал, Б 0,5–1,1 г, Ж 3,5–8,5 г, У 0,7–1,7 г. Уверенность низкая; главная неопределённость — способ подсчёта и размер ядер.'
+FROM calendar_days
+WHERE diary_date = '2026-08-06'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id
+        AND meal_type = 'dinner'
+        AND food_name = '3 ореха пекана'
+  );
+
+UPDATE calendar_days
+SET notes = 'Внесены сон, бег, все перечисленные приёмы пищи, включая дополнение к ужину из 2 варёных яиц, киви и 3 орехов пекана, шахматы, итоговая пользовательская оценка дня 3 из 5 и отсутствие расходов. Размеры порций, калории и БЖУ оценочные; день завершён.'
+WHERE diary_date = '2026-08-06';
 
 UPDATE calendar_days
 SET status = CASE
