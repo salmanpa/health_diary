@@ -662,8 +662,8 @@ canvas {
 
 .coverage-grid {
   display: grid;
-  grid-template-columns: 58px repeat(5, minmax(58px, 1fr));
-  min-width: 480px;
+  grid-template-columns: 58px repeat(6, minmax(58px, 1fr));
+  min-width: 550px;
 }
 
 .coverage-grid > div {
