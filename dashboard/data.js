@@ -87,13 +87,13 @@ window.HEALTH_DIARY_DATA = {
       "sleep_quality": null,
       "food_bases": "chicken, fish",
       "day_rating": 5,
-      "expenses_rub": 0.0,
+      "expenses_rub": 771.0,
       "nutrition_entry_count": 7,
       "meal_type_count": 4,
       "has_sleep": 1,
       "has_workout": 1,
       "has_rating": 1,
-      "has_expenses": 0
+      "has_expenses": 1
     },
     {
       "diary_date": "2026-08-08",

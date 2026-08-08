@@ -890,6 +890,24 @@ SET notes = 'Рыба присутствует в обеде (2 паровые �
 WHERE calendar_day_id = (SELECT id FROM calendar_days WHERE diary_date = '2026-08-07')
   AND base_type = 'fish';
 
+WITH expense_data (category, amount_rub, notes) AS (
+    VALUES
+        ('other', 323, 'Ресторан'),
+        ('groceries', 448, 'Продукты')
+)
+INSERT INTO expenses (calendar_day_id, category, amount_rub, notes)
+SELECT d.id, e.category, e.amount_rub, e.notes
+FROM calendar_days AS d
+CROSS JOIN expense_data AS e
+WHERE d.diary_date = '2026-08-07'
+ON CONFLICT (calendar_day_id, category) DO UPDATE SET
+    amount_rub = excluded.amount_rub,
+    notes = excluded.notes;
+
+UPDATE calendar_days
+SET notes = 'Внесены сон, утренняя пробежка, завтрак, обед, два перекуса и ужин по описанию и фотографиям пользователя. Порции, калории и БЖУ приёмов пищи оценочные; пользовательская оценка дня — 5 из 5. Траты: ресторан — 323 ₽; продукты — 448 ₽.'
+WHERE diary_date = '2026-08-07';
+
 INSERT INTO calendar_days (diary_date, notes)
 VALUES (
     '2026-08-08',
