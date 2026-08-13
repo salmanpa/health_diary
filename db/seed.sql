@@ -1544,3 +1544,112 @@ INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
 SELECT id, 'chicken', 'Курица явно указана в обеде: куриный бульон.'
 FROM calendar_days WHERE diary_date = '2026-08-12'
 ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+-- Итоговая пользовательская оценка за 12 августа завершает день.
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 3, 'Оценка дня пользователем: 3 из 5.'
+FROM calendar_days WHERE diary_date = '2026-08-12'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+UPDATE calendar_days
+SET status = 'complete',
+    notes = 'Записаны сон, завтрак, обед, ужин и перекусы. День завершён после итоговой пользовательской оценки 3 из 5.'
+WHERE diary_date = '2026-08-12';
+
+-- Данные за 13 августа: день остаётся открытым для возможных дополнений.
+INSERT INTO calendar_days (diary_date, status, notes)
+VALUES (
+    '2026-08-13', 'in_progress',
+    'Записаны сон и питание за день. Массы сыра, супа, зелени, хумуса, хлебцев, риета и банки тунца сообщил пользователь; остальные порции оценочные. День остаётся открытым: итоговая пользовательская оценка не сообщена.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET
+    status = excluded.status,
+    notes = excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT id, 480, 'Пользователь сообщил продолжительность сна 8 часов; время начала, окончания и качество не указаны.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    notes = excluded.notes;
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'breakfast', 'Половина порции риса со стручковой фасолью и яйцом; сыр маасдам', 373,
+    425, 18.6, 14.9, 55.0,
+    'Со слов пользователя: половина порции риса со стручковой фасолью и яйцом и 20 г сыра маасдам. «Половина порции» сопоставлена с половиной двойной порции 12 августа: центрально 150 г отварного риса, 150 г фасоли, 1 яйцо (50 г съедобной части) и 2,5 г возможного масла; сыр измерен пользователем. Компоненты: рис 195 ккал, Б 4,1 г, Ж 0,5 г, У 42,3 г; фасоль 53 ккал, Б 2,9 г, Ж 0,5 г, У 11,9 г; яйцо 78 ккал, Б 6,3 г, Ж 5,3 г, У 0,6 г; масло 23 ккал; сыр 79 ккал, Б 5,4 г, Ж 6,2 г, У 0,3 г. Ориентировочный диапазон 330–540 ккал; главные неопределённости — фактический размер исходной порции и масло. Уверенность средняя для сыра и низкая для остального. Проверка по БЖУ даёт около 429 ккал. Оценка завтрака ассистентом: 7/10 — есть белок и овощной компонент, но умеренно много крахмалистых углеводов и мало фруктов/разнообразия.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'breakfast'
+        AND food_name = 'Половина порции риса со стручковой фасолью и яйцом; сыр маасдам'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'lunch', 'Куриный бульон с вермишелью и курицей; руккола и шпинат', 500,
+    290, 31.5, 4.7, 28.4,
+    'Пользователь указал 400 г куриного бульона с вермишелью и курицей и 100 г смеси рукколы со шпинатом. Для центральной оценки суп условно разделён на 250 г бульона, 80 г приготовленной вермишели и 70 г курицы; зелень — поровну по 50 г. Центрально около 290 ккал, Б 31,5 г, Ж 4,7 г, У 28,4 г. Реалистичный диапазон 190–430 ккал, Б 19–42 г, Ж 3–13 г, У 16–42 г. Уверенность низкая; главные неопределённости — доли курицы и вермишели, жирность/солёность бульона. Проверка по БЖУ даёт около 282 ккал; разница объясняется округлением и справочными пищевыми волокнами. Оценка обеда ассистентом: 8/10 — достаточно белка и много листовой зелени, а энергетическая плотность умеренная; возможен высокий натрий бульона.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'lunch'
+        AND food_name = 'Куриный бульон с вермишелью и курицей; руккола и шпинат'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'dinner', 'Хумус; консервированный тунец; хлебцы; риет из кеты; тыквенные семечки; руккола', 199,
+    360, 30.5, 9.2, 36.0,
+    'Пользователь уточнил: хумус 30 г, хлебцы 40 г, риет из кеты 10 г, 15 тыквенных семечек и 2/3 банки тунца массой 130 г. Тунец принят как 86,7 г съедобной/слитой массы; 15 семечек оценены в 2 г, руккола без указанной массы — 30 г. Центрально: хумус 71 ккал, тунец 101 ккал, хлебцы 146 ккал, риет 25 ккал, семечки 11 ккал, руккола 8 ккал. Ориентировочный диапазон 320–420 ккал, Б 27–34 г, Ж 7–14 г, У 32–41 г. Уверенность средняя; главные неопределённости — означает ли 130 г массу слитого тунца, состав хумуса/риета и масса рукколы. Проверка по БЖУ даёт около 349 ккал; остаточная разница связана с клетчаткой и округлением. Оценка ужина ассистентом: 8/10 — много белка, есть бобовые, семечки и зелень; риет, тунец и хлебцы могут заметно повышать натрий.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'dinner'
+        AND food_name = 'Хумус; консервированный тунец; хлебцы; риет из кеты; тыквенные семечки; руккола'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'snack', 'Яблоко; банан; груша; 3 фруктовых пюре «Агуша»', 718,
+    430, 3.5, 1.5, 105.0,
+    'Со слов пользователя: яблоко, банан, груша и 3 пюре «Агуша». Массы и вкусы не указаны. Центрально приняты съедобные массы: яблоко 150 г (78 ккал), банан 120 г (107 ккал), груша 178 г (101 ккал), три фруктовых пюре по 90 г и около 53 ккал/100 г (143 ккал). Ориентировочный диапазон 350–520 ккал, Б 2–5 г, Ж 1–3 г, У 85–128 г. Уверенность низкая; главные неопределённости — размер фруктов, масса упаковок и состав пюре. Проверка по БЖУ даёт около 448 ккал; расхождение около 4% связано с клетчаткой и округлением. Оценка перекуса ассистентом: 6/10 — большое фруктовое разнообразие, но почти весь перекус углеводный и пюре обычно насыщают слабее цельных фруктов.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'snack'
+        AND food_name = 'Яблоко; банан; груша; 3 фруктовых пюре «Агуша»'
+  );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Курица явно указана в обеде: куриный бульон с курицей.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'fish', 'Рыба явно указана в ужине: консервированный тунец и риет из кеты.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+-- Итоговая пользовательская оценка за 13 августа завершает день.
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 2, 'Оценка дня пользователем: 2 из 5.'
+FROM calendar_days WHERE diary_date = '2026-08-13'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+UPDATE calendar_days
+SET status = 'complete',
+    notes = 'Записаны сон и питание за день. Массы сыра, супа, зелени, хумуса, хлебцев, риета и банки тунца сообщил пользователь; остальные порции оценочные. День завершён после итоговой пользовательской оценки 2 из 5.'
+WHERE diary_date = '2026-08-13';
