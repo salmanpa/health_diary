@@ -1653,3 +1653,167 @@ UPDATE calendar_days
 SET status = 'complete',
     notes = 'Записаны сон и питание за день. Массы сыра, супа, зелени, хумуса, хлебцев, риета и банки тунца сообщил пользователь; остальные порции оценочные. День завершён после итоговой пользовательской оценки 2 из 5.'
 WHERE diary_date = '2026-08-13';
+
+-- Данные за 18 августа: пользователь перечислил рацион, тренировку и сон;
+-- день остаётся открытым без итоговой пользовательской оценки.
+INSERT INTO calendar_days (diary_date, status, notes)
+VALUES (
+    '2026-08-18', 'in_progress',
+    'Записаны все перечисленные пользователем приёмы пищи, 6 часов сна и функциональная силовая тренировка 75 минут. Итоговая пользовательская оценка дня не сообщена, поэтому день остаётся открытым.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET
+    status = excluded.status,
+    notes = excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT id, 360,
+    'Пользователь сообщил продолжительность сна 6 часов; время начала, окончания и качество сна не указаны.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    quality_score = NULL,
+    notes = excluded.notes;
+
+INSERT INTO workouts (
+    calendar_day_id, workout_type, duration_minutes, calories_burned_kcal,
+    perceived_exertion, average_heart_rate_bpm, max_heart_rate_bpm, notes
+)
+SELECT id, 'Функциональная силовая тренировка', 75, 550, NULL, NULL, NULL,
+    'Продолжительность сообщил пользователь; 550 ккал — оценка часов, сохранённая как значение устройства, а не расчёт ассистента. RPE и пульс не сообщены, поэтому интенсивность не выводилась.'
+FROM calendar_days
+WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'Функциональная силовая тренировка'
+        AND duration_minutes = 75
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'breakfast', 'Хлебцы тыквенно-морковные «ВкусВилл»; домашнее гуакамоле из четверти авокадо с лимоном', 81,
+    225, 5.5, 8.3, 34.5,
+    'Со слов пользователя: 40 г тыквенно-морковных хлебцев «ВкусВилл» и домашняя намазка из четверти авокадо с лимоном; фото и этикетка не предоставлены. Центрально: хлебцы 40 г — 163 ккал, Б 4,4 г, Ж 2,3 г, У 31,2 г по ранее прочитанной этикетке этого продукта (408,1 ккал, Б 11,1 г, Ж 5,7 г, У 78,1 г на 100 г); авокадо 37,5 г съедобной части — 60 ккал, Б 0,8 г, Ж 5,5 г, У 3,2 г; лимонный сок 3 г — около 1 ккал. Диапазон порции 70–95 г и 205–255 ккал, главным образом из-за размера авокадо. Уверенность средняя. Проверка 4×Б + 9×Ж + 4×У даёт около 235 ккал; разница около 4% связана с клетчаткой и округлением. Оценка завтрака ассистентом: 6/10 — есть клетчатка и ненасыщенные жиры, но мало белка и общая порция невелика для дня с силовой тренировкой.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'breakfast'
+        AND food_name = 'Хлебцы тыквенно-морковные «ВкусВилл»; домашнее гуакамоле из четверти авокадо с лимоном'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'lunch', 'Салат «Тосканский» с зеленью, помидорами и баклажаном; картофельное пюре; куриная грудка на пару', 625,
+    680, 55.0, 19.0, 69.0,
+    'Со слов пользователя: около 200 г салата, предположительно «Тосканского», из зелени, помидоров и баклажана; 250–300 г пюре; около 150 г куриной грудки на пару. Фото, рецепт салата и количество масла не предоставлены. Центрально: салат 200 г — 120 ккал, Б 3 г, Ж 8 г, У 12 г (диапазон 60–220 ккал в зависимости от масла); пюре 275 г — 310 ккал, Б 5,5 г, Ж 11 г, У 47 г (250–300 г, примерно 250–390 ккал по рецепту); грудка 150 г — 250 ккал, Б 46,5 г, Ж 5,5 г, У 0 г (130–170 г, 215–280 ккал). Весь обед ориентировочно 525–890 ккал, Б 47–63 г, Ж 10–32 г, У 54–83 г. Уверенность средняя-низкая; основные неопределённости — масло/заправка салата и рецепт пюре. Проверка по БЖУ даёт около 667 ккал; расхождение около 2% связано с округлением и клетчаткой. Оценка обеда ассистентом: 8/10 — много белка, есть овощи и углеводы для восстановления; итоговая энергоёмкость и соль зависят от масла, молока/масла в пюре и заправки.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'lunch'
+        AND food_name = 'Салат «Тосканский» с зеленью, помидорами и баклажаном; картофельное пюре; куриная грудка на пару'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'snack', 'Большая груша; банан', 340,
+    235, 2.0, 0.7, 61.0,
+    'Со слов пользователя: достаточно большая груша и один банан; массы не измерялись. Центрально приняты 220 г съедобной части груши — 125 ккал и 120 г банана — 107 ккал. Диапазон 280–410 г и 190–285 ккал. Уверенность средняя-низкая; главная неопределённость — размер и съедобная масса плодов. Проверка по БЖУ даёт около 258 ккал; более высокое расхождение с табличной энергией объясняется округлением углеводов и пищевыми волокнами. Оценка перекуса ассистентом: 7/10 — два цельных фрукта дают клетчатку и углеводы, но почти не дают белка для восстановления после силовой нагрузки.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'snack'
+        AND food_name = 'Большая груша; банан'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'snack', 'Хлебцы с риетом из горбуши и другой рыбы и Almette с вялеными томатами; половина авокадо; помидор; половина сладкого перца', 315,
+    378, 10.1, 18.2, 43.6,
+    'Со слов пользователя: примерно 60 г хлебцев с двумя намазками суммарно, половина авокадо, помидор и дополнительно половина сладкого перца. Формулировка 60 г интерпретирована как общая масса хлебцев вместе с намазками, а не масса одних хлебцев. Центрально условно разделено: хлебцы 35 г — 143 ккал, риет 12,5 г — 30 ккал, Almette 12,5 г — 30 ккал; авокадо 75 г съедобной части — 120 ккал; помидор 120 г — 22 ккал; половина перца 60 г — 18 ккал. Ориентировочно 315–465 ккал, Б 8–14 г, Ж 13–25 г, У 35–53 г. Уверенность низкая; главные неопределённости — доли хлебцев и намазок в 60 г, рецептура двух готовых намазок и размеры авокадо, помидора и перца. Проверка по БЖУ даёт около 379 ккал. Оценка перекуса ассистентом: 8/10 — два овоща, авокадо и немного рыбного белка улучшают разнообразие и клетчатку, но белка умеренно, а готовые намазки и хлебцы могут давать много соли.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'snack'
+        AND food_name = 'Хлебцы с риетом из горбуши и другой рыбы и Almette с вялеными томатами; половина авокадо; помидор; половина сладкого перца'
+  );
+
+INSERT INTO nutrition_entries (
+    calendar_day_id, meal_type, food_name, weight_g,
+    calories_kcal, protein_g, fat_g, carbs_g, notes
+)
+SELECT id, 'dinner', '7 крупных креветок; брокколи; киноа; хлебцы с Almette; тыквенные семечки', 225,
+    305, 33.5, 9.5, 25.0,
+    'Первоначально пользователь сообщил 6 крупных креветок, затем добавил ещё одну креветку, 40 г брокколи, 50 г приготовленной киноа, 20 г хлебцев с Almette и 10 г тыквенных семечек. Исходный факт о 6 креветках сохранён в этой заметке. Центрально: 7 креветок — 105 г съедобной приготовленной части, 105 ккал, Б 25 г, Ж 1 г; брокколи 40 г — 15 ккал, Б 1 г, Ж 0 г, У 3 г; приготовленная киноа 50 г — 60 ккал, Б 2 г, Ж 1 г, У 11 г; общие 20 г хлебцев с Almette условно разделены на 12 г хлебцев и 8 г сыра — около 68 ккал, Б 2 г, Ж 2,5 г, У 10 г; семечки 10 г — 57 ккал, Б 3,5 г, Ж 5 г, У 1 г. Ориентировочно весь ужин 255–365 ккал, Б 28–39 г, Ж 7–13 г, У 20–31 г. Уверенность средняя-низкая; главные неопределённости — съедобная масса креветок и соотношение хлебцев с Almette в 20 г. Проверка по БЖУ даёт около 316 ккал; расхождение около 4% связано с клетчаткой и округлением. Оценка ужина ассистентом: 8/10 — много белка, появились овощи и умеренная порция углеводов для восстановления; готовая намазка, хлебцы и креветки могут повышать натрий.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries
+      WHERE calendar_day_id = calendar_days.id AND meal_type = 'dinner'
+        AND food_name = '7 крупных креветок; брокколи; киноа; хлебцы с Almette; тыквенные семечки'
+  );
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'chicken', 'Курица явно указана в обеде: куриная грудка на пару.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id, 'fish', 'Рыба явно указана во втором перекусе: риет из горбуши и другой рыбы. Креветки относятся к морепродуктам и сами по себе не использованы как основание fish.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+ON CONFLICT (calendar_day_id, base_type) DO UPDATE SET notes = excluded.notes;
+
+-- Итоговая пользовательская оценка за 18 августа завершает день.
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 3, 'Оценка дня пользователем: 3 из 5.'
+FROM calendar_days WHERE diary_date = '2026-08-18'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    rating = excluded.rating,
+    notes = excluded.notes;
+
+UPDATE calendar_days
+SET status = 'complete',
+    notes = 'Записаны питание, 6 часов сна и функциональная силовая тренировка 75 минут. День завершён после итоговой пользовательской оценки 3 из 5.'
+WHERE diary_date = '2026-08-18';
+
+-- Данные за 19 августа: сон и беговая тренировка; день остаётся открытым.
+INSERT INTO calendar_days (diary_date, status, notes)
+VALUES (
+    '2026-08-19', 'in_progress',
+    'Записаны 5,5 часа сна и беговая тренировка 30 минут на 6 км. Питание и итоговая пользовательская оценка дня пока не сообщены.'
+)
+ON CONFLICT (diary_date) DO UPDATE SET
+    status = excluded.status,
+    notes = excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT id, 330,
+    'Пользователь сообщил продолжительность сна 5,5 часа; время начала, окончания и качество сна не указаны.'
+FROM calendar_days WHERE diary_date = '2026-08-19'
+ON CONFLICT (calendar_day_id) DO UPDATE SET
+    duration_minutes = excluded.duration_minutes,
+    quality_score = NULL,
+    notes = excluded.notes;
+
+INSERT INTO workouts (
+    calendar_day_id, workout_type, duration_minutes, distance_km,
+    calories_burned_kcal, perceived_exertion,
+    average_heart_rate_bpm, max_heart_rate_bpm, notes
+)
+SELECT id, 'running', 30, 6.0, NULL, NULL, NULL, NULL,
+    'Пользователь сообщил бег 30 минут и дистанцию 6 км (средний темп 5:00 мин/км). Калории, RPE и пульс не сообщены; расход калорий не оценивался, физиологическая интенсивность не выводилась.'
+FROM calendar_days
+WHERE diary_date = '2026-08-19'
+  AND NOT EXISTS (
+      SELECT 1 FROM workouts
+      WHERE calendar_day_id = calendar_days.id
+        AND workout_type = 'running'
+        AND duration_minutes = 30
+        AND distance_km = 6.0
+  );
