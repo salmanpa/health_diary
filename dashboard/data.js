@@ -102,7 +102,7 @@ window.HEALTH_DIARY_DATA = {
     },
     {
       "diary_date": "2026-08-08",
-      "status": "in_progress",
+      "status": "complete",
       "calories_kcal": 1756.0,
       "protein_g": 91.9,
       "fat_g": 78.3,
@@ -114,14 +114,14 @@ window.HEALTH_DIARY_DATA = {
       "sleep_minutes": 510,
       "sleep_quality": null,
       "food_bases": "fish",
-      "day_rating": null,
+      "day_rating": 2,
       "nutrition_entry_count": 5,
       "meal_type_count": 3,
       "incomplete_macro_entry_count": 0,
       "estimated_nutrition_entry_count": 2,
       "has_sleep": 1,
       "has_workout": 1,
-      "has_rating": 0
+      "has_rating": 1
     },
     {
       "diary_date": "2026-08-09",
@@ -402,10 +402,10 @@ window.HEALTH_DIARY_DATA = {
     {
       "diary_date": "2026-08-25",
       "status": "complete",
-      "calories_kcal": 1807.0,
-      "protein_g": 101.2,
-      "fat_g": 57.6,
-      "carbs_g": 226.0,
+      "calories_kcal": 1830.0,
+      "protein_g": 101.5,
+      "fat_g": 57.7,
+      "carbs_g": 231.8,
       "workout_count": 0,
       "workout_minutes": 0.0,
       "distance_km": 0.0,
@@ -414,10 +414,10 @@ window.HEALTH_DIARY_DATA = {
       "sleep_quality": null,
       "food_bases": "chicken, fish",
       "day_rating": 1,
-      "nutrition_entry_count": 11,
+      "nutrition_entry_count": 12,
       "meal_type_count": 4,
       "incomplete_macro_entry_count": 0,
-      "estimated_nutrition_entry_count": 5,
+      "estimated_nutrition_entry_count": 6,
       "has_sleep": 1,
       "has_workout": 0,
       "has_rating": 1
@@ -1021,11 +1021,11 @@ window.HEALTH_DIARY_DATA = {
     {
       "diary_date": "2026-08-25",
       "meal_type": "dinner",
-      "calories_kcal": 576.0,
-      "protein_g": 28.0,
-      "fat_g": 14.0,
-      "carbs_g": 84.0,
-      "foods": "Суши с лососем и огурцом"
+      "calories_kcal": 599.0,
+      "protein_g": 28.3,
+      "fat_g": 14.1,
+      "carbs_g": 89.8,
+      "foods": "Суши с лососем и огурцом • Голубика"
     },
     {
       "diary_date": "2026-08-25",
@@ -2906,6 +2906,18 @@ window.HEALTH_DIARY_DATA = {
       "fat_g": 14.0,
       "carbs_g": 84.0,
       "notes": "Масса и основной состав (рис, лосось, огурец) сообщены пользователем. Соотношение компонентов, соусы и разновидности роллов неизвестны; диапазон 470–720 ккал. Уверенность низкая."
+    },
+    {
+      "diary_date": "2026-08-25",
+      "meal_type": "dinner",
+      "eaten_at": null,
+      "food_name": "Голубика",
+      "weight_g": 40.0,
+      "calories_kcal": 23.0,
+      "protein_g": 0.3,
+      "fat_g": 0.1,
+      "carbs_g": 5.8,
+      "notes": "Масса 40 г сообщена пользователем. БЖУ рассчитаны по профилю сырой голубики USDA FoodData Central; это справочная оценка состава, а не измерение конкретных ягод. Уверенность высокая. Проверка 4×Б + 9×Ж + 4×У отличается более чем на 10%: углеводы включают пищевые волокна, а значения округлены."
     }
   ],
   "workouts": [
@@ -3351,21 +3363,21 @@ window.HEALTH_DIARY_DATA = {
     },
     {
       "diary_date": "2026-08-25",
-      "component_count": 17,
-      "analyzed_component_count": 7,
-      "component_weight_g": 2573.0,
-      "analyzed_component_weight_g": 763.0,
-      "fiber_g": 16.56,
-      "calcium_mg": 98.0,
-      "iron_mg": 3.2,
-      "magnesium_mg": 125.2,
-      "potassium_mg": 1761.8,
-      "sodium_mg": 213.7,
-      "vitamin_c_mg": 45.1,
+      "component_count": 18,
+      "analyzed_component_count": 8,
+      "component_weight_g": 2613.0,
+      "analyzed_component_weight_g": 803.0,
+      "fiber_g": 17.52,
+      "calcium_mg": 100.4,
+      "iron_mg": 3.31,
+      "magnesium_mg": 127.6,
+      "potassium_mg": 1792.6,
+      "sodium_mg": 214.1,
+      "vitamin_c_mg": 49.0,
       "vitamin_d_mcg": 2.2,
       "vitamin_b12_mcg": 0.97,
-      "folate_dfe_mcg": 132.0,
-      "omega3_g": 0.347
+      "folate_dfe_mcg": 134.4,
+      "omega3_g": 0.37
     }
   ],
   "nutrient_references": [
@@ -11451,6 +11463,26 @@ window.HEALTH_DIARY_DATA = {
       "vitamin_b12_mcg": null,
       "folate_dfe_mcg": null,
       "omega3_g": null
+    },
+    {
+      "diary_date": "2026-08-25",
+      "meal_type": "dinner",
+      "component_name": "Голубика",
+      "estimated_weight_g": 40.0,
+      "confidence": "high",
+      "fdc_id": 171711,
+      "reference_food_name": "Blueberries, raw",
+      "fiber_g": 0.96,
+      "calcium_mg": 2.4,
+      "iron_mg": 0.112,
+      "magnesium_mg": 2.4,
+      "potassium_mg": 30.8,
+      "sodium_mg": 0.4,
+      "vitamin_c_mg": 3.88,
+      "vitamin_d_mcg": 0.0,
+      "vitamin_b12_mcg": 0.0,
+      "folate_dfe_mcg": 2.4,
+      "omega3_g": 0.0232
     }
   ],
   "food_bases": [
@@ -11470,8 +11502,8 @@ window.HEALTH_DIARY_DATA = {
   "quality": [
     {
       "diary_month": "2026-08",
-      "nutrition_entries": 155,
-      "estimated_entries": 63,
+      "nutrition_entries": 156,
+      "estimated_entries": 64,
       "incomplete_macro_entries": 1
     }
   ]
