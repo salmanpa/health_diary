@@ -2198,3 +2198,29 @@ WITH bases(diary_date, base_type, notes) AS (VALUES
 INSERT INTO daily_food_bases(calendar_day_id, base_type, notes)
 SELECT d.id,b.base_type,b.notes FROM bases b JOIN calendar_days d USING(diary_date)
 ON CONFLICT(calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;
+
+-- Дополнение 25 августа и итоговая пользовательская оценка 8 августа.
+INSERT INTO nutrition_entries (calendar_day_id, meal_type, food_name, weight_g, calories_kcal, protein_g, fat_g, carbs_g, notes)
+SELECT id, 'dinner', 'Голубика', 40, 23, 0.3, 0.1, 5.8,
+       'Масса 40 г сообщена пользователем. БЖУ рассчитаны по профилю сырой голубики USDA FoodData Central; это справочная оценка состава, а не измерение конкретных ягод. Уверенность высокая. Проверка 4×Б + 9×Ж + 4×У отличается более чем на 10%: углеводы включают пищевые волокна, а значения округлены.'
+FROM calendar_days WHERE diary_date = '2026-08-25'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries AS n
+      WHERE n.calendar_day_id=calendar_days.id
+        AND n.meal_type='dinner' AND n.food_name='Голубика'
+  );
+
+UPDATE nutrition_entries
+SET weight_g=40, calories_kcal=23, protein_g=0.3, fat_g=0.1, carbs_g=5.8,
+    notes='Масса 40 г сообщена пользователем. БЖУ рассчитаны по профилю сырой голубики USDA FoodData Central; это справочная оценка состава, а не измерение конкретных ягод. Уверенность высокая. Проверка 4×Б + 9×Ж + 4×У отличается более чем на 10%: углеводы включают пищевые волокна, а значения округлены.'
+WHERE calendar_day_id=(SELECT id FROM calendar_days WHERE diary_date='2026-08-25')
+  AND meal_type='dinner' AND food_name='Голубика';
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 2, 'Итоговая оценка дня сообщена пользователем: 2 из 5.'
+FROM calendar_days WHERE diary_date = '2026-08-08'
+ON CONFLICT (calendar_day_id) DO UPDATE SET rating=excluded.rating, notes=excluded.notes;
+
+UPDATE calendar_days
+SET status='complete', notes='Записаны питание за день и итоговая пользовательская оценка 2 из 5; день завершён.'
+WHERE diary_date='2026-08-08';
