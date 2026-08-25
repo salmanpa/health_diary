@@ -21,6 +21,16 @@ target. Do not invent a weight goal, training frequency, allergies, medical
 conditions, or dietary restrictions. Ask when one of those facts materially
 changes the recommendation.
 
+## Required local protocols
+
+- Before adding or correcting a meal, recalculating nutrition, or interpreting
+  multi-day nutrient intake, read `docs/nutrition-estimation-protocol.md` and
+  follow it as a mandatory supplement to this file.
+- Before changing dashboard analytics, its generator, snapshot contract, or UI,
+  read `docs/dashboard-v2-spec.md`. Preserve the explicit snapshot-refresh
+  policy below even if the frontend build system changes.
+- If a protocol conflicts with this file, this file has priority.
+
 ## Food-analysis workflow
 
 For every meal description or photo:
@@ -105,6 +115,54 @@ photo, one side-angle photo for depth, the plate/bowl diameter, and a short note
 about ingredients, oil/dressing, package weight, and how much was eaten. Keep
 the logging flow lightweight: never turn this into a long questionnaire.
 
+## Nutrition calculation integrity
+
+- Treat a nutrition entry and its components as one exhaustive model. Before
+  inserting components, inspect every existing component for that entry and
+  deduplicate semantically, not only by exact `component_name`. Never store a
+  full mixed dish alongside another full-dish alias or its exhaustive ingredient
+  decomposition.
+- Reconcile the sum of central edible component weights with the entry's
+  `weight_g`. Investigate and explain a difference above the larger of 20 g or
+  10%; do not silently absorb it into a component. Keep container weight,
+  refuse, drained liquid, cooking loss, served food, and actually eaten food
+  conceptually separate.
+- Match the portion basis to the food profile: raw with raw, cooked with cooked,
+  drained with drained, and edible weight with edible weight. Use a raw profile
+  for a cooked portion only with a documented recipe yield and, when relevant,
+  a nutrient-retention method.
+- Keep identity, portion, and profile-match confidence separate in reasoning and
+  notes; the stored overall confidence is the weakest of the three. An exact
+  package weight does not make a generic micronutrient substitution `high`.
+- Prefer exact-product label macros, then a recipe with ingredient weights and
+  cooked yield, then an authoritative profile for the food as eaten. Do not
+  replace a supplied label to force agreement with 4/9/4. Treat a discrepancy
+  above the larger of 20 kcal or 10% as a review trigger and explicitly consider
+  fiber, polyols, organic acids, alcohol, label rounding, or inconsistent source
+  data before deciding it is an error.
+- When a common, sufficiently identified whole food lacks a local profile, add a
+  reproducible authoritative profile in the same change when practical. Keep a
+  genuinely mixed or unidentified recipe unlinked instead of assigning a
+  convenient generic profile.
+- Calculate micronutrient coverage separately for each nutrient; a linked food
+  whose profile has `NULL` for that nutrient is not covered. Report count,
+  edible-mass and, once component calories exist, energy coverage plus the share
+  of low-confidence evidence and the largest unknown contributors.
+- Use `NULL` for unavailable source values and zero only when the source supports
+  a true zero or defensible trace treatment. For sodium, a known minimum below an
+  upper reference never proves that intake is within the reference because salt,
+  brine, sauces, restaurant preparation, and packing media may be unknown.
+- Interpret one day descriptively. Fewer than 7 completed days are insufficient
+  for a stable pattern; 7–13 days support only a provisional signal; at least 14
+  reasonably covered, ordinary completed days may support a pattern. Always
+  state `n`, coverage, uncertainty, and that associations are not causal.
+- Preserve a supplied `eaten_at` and reuse one event identifier or timestamp for
+  entries from the same meal. Never merge separate snack occasions merely
+  because they share `meal_type='snack'`.
+- Use `fish` for finfish. Do not silently classify shellfish as `fish`; retain the
+  distinction in notes until the schema has a separate `seafood` base if the user
+  wants it tracked.
+
 ## Repository data rules
 
 - Use ISO dates (`YYYY-MM-DD`) and preserve the date supplied by the user.
@@ -153,6 +211,35 @@ the logging flow lightweight: never turn this into a long questionnaire.
   and `db/nutrition_components.sql` twice, run `PRAGMA integrity_check`, and
   inspect `daily_health_summary` and `daily_nutrient_summary` for the affected
   dates.
+- For affected nutrition entries, also check semantic duplicate components,
+  component-to-entry mass reconciliation, the macro-energy discrepancy, and
+  nutrient-specific coverage. Compare affected daily nutrient totals before and
+  after a correction so an accidental double count cannot pass SQL integrity.
+
+## Dashboard analytical contract
+
+- Preserve `measured`, `labelled`, `estimated`, `known_minimum`,
+  `explicit_zero`, `missing`, and `in_progress` as distinct states. Never turn a
+  missing meal, workout, nutrient, or calorie estimate into a displayed zero.
+- Every aggregate must expose its inclusion rule, denominator `n/N`, range or
+  spread, confidence, and relevant coverage. Do not use nutrient traffic-light
+  language when the number of completed days or nutrient-specific coverage is
+  insufficient.
+- Do not derive analytical fields by searching free-form `notes`. Add structured
+  provenance, uncertainty, and completeness fields before relying on them in a
+  chart or filter.
+- Do not display `nutrition minus workout calories` as energy balance. The diary
+  does not contain complete energy expenditure, and no calorie goal is known.
+- Treat relationships among food, sleep, training, and day ratings as
+  exploratory. Show paired-observation `n` and never imply causation.
+- Every chart needs a keyboard/touch path, non-color encoding, readable contrast,
+  reduced-motion behavior, and an equivalent text summary or semantic HTML
+  table.
+- Bundle pinned dependencies locally without runtime CDN, telemetry, or external
+  API calls. Keep private free text out of the snapshot unless the view requires
+  it, and enforce an allowlist that excludes expenses and financial notes.
+- Snapshot metadata must include generation time, timezone, latest source date,
+  schema/contract/calculation versions, and a source commit or hash.
 
 ## Dashboard update policy
 
