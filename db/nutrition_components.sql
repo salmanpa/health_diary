@@ -292,6 +292,85 @@ ON CONFLICT (nutrition_entry_id, component_name) DO UPDATE SET
     confidence = excluded.confidence,
     notes = excluded.notes;
 
+-- Компонентная реконструкция записей 21–25 августа. Для блюд с неизвестным
+-- рецептом весь смешанный компонент намеренно остаётся явным и несвязанным:
+-- его масса сохранена, но микронутриенты не создают ложной точности.
+WITH profile_map (food_name, reference_fdc_id, confidence) AS (
+    VALUES
+        ('Рис отварной',169757,'high'),
+        ('Тыквенные семечки',170188,'high'),
+        ('Хлебцы, 8 штук',172739,'low'),
+        ('Груша',169118,'medium'),
+        ('Перепелиные яйца, 3 штуки',173424,'high'),
+        ('Малина',NULL,'high'),
+        ('Голубика',171711,'high'),
+        ('Форель слабосолёная',175168,'high'),
+        ('Киви',168153,'medium'),
+        ('Хлебцы, 6 штук',172739,'low'),
+        ('Куриная грудка су-вид',171477,'high'),
+        ('Булгур отварной',170287,'medium'),
+        ('Рыба на пару',174237,'medium'),
+        ('Яблоко',171688,'medium'),
+        ('Банан',173944,'medium'),
+        ('Перепелиные яйца, 2 штуки',173424,'high')
+), component_data AS (
+    SELECT
+        n.id AS nutrition_entry_id,
+        n.food_name AS component_name,
+        n.weight_g AS estimated_weight_g,
+        p.reference_fdc_id,
+        COALESCE(p.confidence, CASE
+            WHEN n.notes LIKE '%Уверенность высокая%' THEN 'high'
+            WHEN n.notes LIKE '%Уверенность средняя%' THEN 'medium'
+            ELSE 'low' END) AS confidence,
+        CASE
+            WHEN p.reference_fdc_id IS NULL THEN
+                'Компонент сохранён с центральной массой записи. Надёжный профиль точного продукта или рецепт отсутствует; он исключён из известного минимального итога микронутриентов.'
+            ELSE
+                'Центральная масса перенесена из записи. Профиль USDA FoodData Central выбран как ближайшая воспроизводимая замена и не является измерением конкретного продукта.'
+        END AS notes
+    FROM nutrition_entries AS n
+    JOIN calendar_days AS d ON d.id = n.calendar_day_id
+    LEFT JOIN profile_map AS p ON p.food_name = n.food_name
+    WHERE d.diary_date BETWEEN '2026-08-21' AND '2026-08-25'
+      AND n.food_name <> 'Яичница из 2 яиц'
+)
+INSERT INTO nutrition_components (
+    nutrition_entry_id, component_name, estimated_weight_g,
+    reference_fdc_id, confidence, notes
+)
+SELECT nutrition_entry_id, component_name, estimated_weight_g,
+       reference_fdc_id, confidence, notes
+FROM component_data
+WHERE 1
+ON CONFLICT (nutrition_entry_id, component_name) DO UPDATE SET
+    estimated_weight_g = excluded.estimated_weight_g,
+    reference_fdc_id = excluded.reference_fdc_id,
+    confidence = excluded.confidence,
+    notes = excluded.notes;
+
+WITH egg_components (component_name, estimated_weight_g, reference_fdc_id, confidence, notes) AS (
+    VALUES
+        ('Жареные яйца',100,173423,'medium','Пользователь указал два яйца; съедобная масса оценена по стандартной порции. Профиль жареного целого яйца USDA — ближайшая замена.'),
+        ('Масло для яичницы',3,171413,'low','Количество и вид масла не сообщены; центрально учтены 3 г. Это главный источник неопределённости оценки яичницы.')
+)
+INSERT INTO nutrition_components (
+    nutrition_entry_id, component_name, estimated_weight_g,
+    reference_fdc_id, confidence, notes
+)
+SELECT n.id, c.component_name, c.estimated_weight_g,
+       c.reference_fdc_id, c.confidence, c.notes
+FROM nutrition_entries AS n
+JOIN calendar_days AS d ON d.id = n.calendar_day_id
+CROSS JOIN egg_components AS c
+WHERE d.diary_date BETWEEN '2026-08-21' AND '2026-08-25'
+  AND n.food_name = 'Яичница из 2 яиц'
+ON CONFLICT (nutrition_entry_id, component_name) DO UPDATE SET
+    estimated_weight_g = excluded.estimated_weight_g,
+    reference_fdc_id = excluded.reference_fdc_id,
+    confidence = excluded.confidence,
+    notes = excluded.notes;
+
 -- Компоненты всех приёмов пищи 20 августа.
 WITH component_data (
     meal_type, entry_food_name, component_name, estimated_weight_g,
