@@ -2166,3 +2166,35 @@ WHERE calendar_day_id IN (
       'Финик, 1 штука', 'Яблоко', 'Банан'
   )
   AND notes NOT LIKE '%Проверка 4×Б%';
+
+-- Дополнение дневника 24–25 августа по сообщению пользователя.
+WITH meal_data (diary_date, meal_type, food_name, weight_g, calories, protein, fat, carbs, notes) AS (
+    VALUES
+      ('2026-08-24','snack','Сэндвич с курицей',120,260.4,30,1.2,32.4,'Масса и БЖУ на 100 г сообщены пользователем (25 г белка, 1 г жира, 27 г углеводов). Калорийность рассчитана по 4/9/4. Уверенность высокая; значения этикетки были приблизительными.'),
+      ('2026-08-25','lunch','Салат коул-слоу',120,180,1.5,14,12,'Масса сообщена пользователем. Рецепт и количество заправки неизвестны; центральная оценка 180 ккал, диапазон 100–260 ккал. Уверенность низкая.'),
+      ('2026-08-25','lunch','Суп с консервированным тунцом',170,100,10,3,8,'Масса и наличие консервированного тунца сообщены пользователем. Рецепт и доля тунца неизвестны; диапазон 70–160 ккал. Уверенность низкая.'),
+      ('2026-08-25','lunch','Картофельное пюре',150,198,3,6.3,30,'Масса сообщена пользователем; использована типовая оценка пюре с молоком и маслом. Диапазон 150–260 ккал. Уверенность средняя.'),
+      ('2026-08-25','lunch','Куриная грудка на пару',120,198,37.2,4.3,0,'Масса и способ приготовления сообщены пользователем; профиль готовой куриной грудки использован как ближайшая замена. Диапазон 180–220 ккал. Уверенность высокая.'),
+      ('2026-08-25','snack','Яблоко',150,78,0.5,0.3,21,'Один плод без массы; приняты 150 г съедобной части. Диапазон 60–100 ккал. Уверенность средняя.'),
+      ('2026-08-25','snack','Банан',120,107,1.5,0.5,27,'Один плод без массы; приняты 120 г съедобной части. Диапазон 90–135 ккал. Уверенность средняя.'),
+      ('2026-08-25','dinner','Суши с лососем и огурцом',360,576,28,14,84,'Масса и основной состав (рис, лосось, огурец) сообщены пользователем. Соотношение компонентов, соусы и разновидности роллов неизвестны; диапазон 470–720 ккал. Уверенность низкая.')
+)
+INSERT INTO nutrition_entries (calendar_day_id, meal_type, food_name, weight_g, calories_kcal, protein_g, fat_g, carbs_g, notes)
+SELECT d.id, m.meal_type, m.food_name, m.weight_g, m.calories, m.protein, m.fat, m.carbs, m.notes
+FROM meal_data AS m JOIN calendar_days AS d USING (diary_date)
+WHERE NOT EXISTS (SELECT 1 FROM nutrition_entries AS n WHERE n.calendar_day_id=d.id AND n.meal_type=m.meal_type AND n.food_name=m.food_name);
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id, 1, 'Итоговая оценка дня сообщена пользователем: 1 из 5.' FROM calendar_days WHERE diary_date='2026-08-25'
+ON CONFLICT (calendar_day_id) DO UPDATE SET rating=excluded.rating, notes=excluded.notes;
+
+UPDATE calendar_days SET status='complete', notes='Записаны сон и питание за день. День завершён после итоговой оценки пользователя 1 из 5.' WHERE diary_date='2026-08-25';
+
+WITH bases(diary_date, base_type, notes) AS (VALUES
+ ('2026-08-24','chicken','Курица явно указана в сэндвиче, куриной грудке и котлете.'),
+ ('2026-08-25','chicken','Куриная грудка явно указана в обеде.'),
+ ('2026-08-25','fish','Тунец в супе и лосось в суши явно указаны пользователем.')
+)
+INSERT INTO daily_food_bases(calendar_day_id, base_type, notes)
+SELECT d.id,b.base_type,b.notes FROM bases b JOIN calendar_days d USING(diary_date)
+ON CONFLICT(calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;

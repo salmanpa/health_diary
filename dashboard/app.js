@@ -45,6 +45,8 @@
   const monthSelect = document.getElementById("monthSelect");
   let selectedMonth = payload.meta.months[payload.meta.months.length - 1];
   let currentDays = [];
+  const chartHits = new Map();
+  const mealNames = { breakfast: "Завтрак", lunch: "Обед", dinner: "Ужин", snack: "Перекус" };
 
   function numeric(values) {
     return values
@@ -209,6 +211,12 @@
     [...days].reverse().forEach((day) => {
       const workouts = workoutsForDate(day.diary_date);
       const row = element("tr", day.status === "complete" ? "" : "is-in-progress");
+      row.tabIndex = 0;
+      row.setAttribute("aria-label", `Открыть питание за ${dateLabel(day.diary_date)}`);
+      row.addEventListener("click", () => openDay(day));
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDay(day); }
+      });
 
       const dateCell = element("td", "date-cell");
       const date = element("strong", "", dateLabel(day.diary_date, true));
@@ -234,6 +242,40 @@
       row.append(workoutCell, ratingCell);
       body.appendChild(row);
     });
+  }
+
+  function openDay(day) {
+    const dialog = document.getElementById("dayDialog");
+    const content = document.getElementById("dayDialogContent");
+    const entries = (payload.nutrition_entries || []).filter((item) => item.diary_date === day.diary_date);
+    setText("dayDialogTitle", dateLabel(day.diary_date));
+    content.replaceChildren();
+    const total = element("div", "day-total");
+    [`${format(day.calories_kcal)} ккал`, `Б ${format(day.protein_g, 1)} г`, `Ж ${format(day.fat_g, 1)} г`, `У ${format(day.carbs_g, 1)} г`]
+      .forEach((value) => total.appendChild(element("span", "", value)));
+    content.appendChild(total);
+    Object.keys(mealNames).forEach((mealType) => {
+      const mealEntries = entries.filter((item) => item.meal_type === mealType);
+      if (!mealEntries.length) return;
+      const section = element("section", "meal-detail");
+      section.appendChild(element("h3", "", mealNames[mealType]));
+      mealEntries.forEach((item) => {
+        const food = element("div", "food-detail");
+        food.append(
+          element("strong", "", item.food_name),
+          element("span", "", item.weight_g === null ? "масса —" : `${format(item.weight_g, 1)} г`),
+          element("span", "", `${format(item.calories_kcal)} ккал`),
+          element("span", "", `Б ${format(item.protein_g, 1)}`),
+          element("span", "", `Ж ${format(item.fat_g, 1)}`),
+          element("span", "", `У ${format(item.carbs_g, 1)}`)
+        );
+        if (item.notes) food.appendChild(element("small", "", item.notes));
+        section.appendChild(food);
+      });
+      content.appendChild(section);
+    });
+    if (!entries.length) content.appendChild(element("p", "", "Питание за этот день не записано."));
+    dialog.showModal();
   }
 
   function renderNutritionSignals(days) {
@@ -554,11 +596,13 @@
     drawGrid(context, width, height, padding, ceiling, (value) => format(value));
     const slot = plotWidth / days.length;
     const barWidth = Math.min(58, slot * 0.58);
+    const hits = [];
     days.forEach((day, index) => {
       const value = Number(day.calories_kcal) || 0;
       const barHeight = (value / ceiling) * plotHeight;
       const x = padding.left + slot * index + (slot - barWidth) / 2;
       const y = padding.top + plotHeight - barHeight;
+      hits.push({ x: x + barWidth / 2, y, day, text: `${dateLabel(day.diary_date)}<br><b>${format(value)} ккал</b>` });
       context.fillStyle = day.status === "complete" ? COLORS.green : COLORS.greenSoft;
       context.fillRect(x, y, barWidth, barHeight);
       if (day.status !== "complete") {
@@ -576,6 +620,7 @@
     drawDayLabels(context, days, width, height, padding);
     const avg = average(completed(days).map((day) => day.calories_kcal));
     setText("calorieChartTitle", avg === null ? "Калории по дням" : `Калории по дням · среднее ${format(avg)} ккал`);
+    chartHits.set("calorieChart", hits);
   }
 
   function drawMacroChart(days) {
@@ -594,6 +639,10 @@
     const ceiling = Math.ceil(maximum / 50) * 50;
     drawGrid(context, width, height, padding, ceiling, (value) => `${format(value)}г`);
     const xFor = (index) => days.length === 1 ? padding.left + plotWidth / 2 : padding.left + (plotWidth / (days.length - 1)) * index;
+    chartHits.set("macroChart", days.map((day, index) => ({
+      x: xFor(index), y: padding.top + plotHeight / 2, day,
+      text: `${dateLabel(day.diary_date)}<br><b>Б ${format(day.protein_g, 1)} · Ж ${format(day.fat_g, 1)} · У ${format(day.carbs_g, 1)} г</b>`,
+    })));
     series.forEach((item) => {
       context.strokeStyle = item.color;
       context.lineWidth = 2.5;
@@ -631,6 +680,10 @@
       value: day.sleep_minutes === null ? null : Number(day.sleep_minutes) / 60,
       x: padding.left + slot * index + slot / 2,
     }));
+    chartHits.set("sleepChart", points.filter((point) => point.value !== null).map((point, index) => ({
+      x: point.x, y: padding.top + plotHeight - (point.value / ceiling) * plotHeight,
+      day: days.filter((day) => day.sleep_minutes !== null)[index], text: `${format(point.value, 1)} ч сна`,
+    })));
     context.strokeStyle = "#bbf07b";
     context.lineWidth = 3;
     let drawing = false;
@@ -664,15 +717,18 @@
     drawGrid(context, width, height, padding, ceiling, (value) => `${format(value)}м`);
     const slot = plotWidth / days.length;
     const barWidth = Math.min(54, slot * 0.5);
+    const hits = [];
     days.forEach((day, index) => {
       const value = Number(day.workout_minutes) || 0;
       const x = padding.left + slot * index + (slot - barWidth) / 2;
       const barHeight = (value / ceiling) * plotHeight;
       const y = padding.top + plotHeight - barHeight;
+      hits.push({ x: x + barWidth / 2, y, day, text: `${dateLabel(day.diary_date)}<br><b>${format(value)} мин тренировки</b>` });
       context.fillStyle = COLORS.blue;
       context.fillRect(x, y, barWidth, barHeight);
     });
     drawDayLabels(context, days, width, height, padding);
+    chartHits.set("activityChart", hits);
   }
 
   function drawAll(days) {
@@ -703,6 +759,34 @@
   monthSelect.addEventListener("change", () => {
     selectedMonth = monthSelect.value;
     render();
+  });
+
+  document.getElementById("dayDialogClose").addEventListener("click", () => document.getElementById("dayDialog").close());
+  document.getElementById("dayDialog").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
+  const tooltip = document.getElementById("chartTooltip");
+  document.querySelectorAll("canvas").forEach((canvas) => {
+    canvas.addEventListener("mousemove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const hits = chartHits.get(canvas.id) || [];
+      const hit = hits.reduce((best, item) => !best || Math.abs(item.x - x) < Math.abs(best.x - x) ? item : best, null);
+      if (!hit || Math.abs(hit.x - x) > Math.max(22, rect.width / Math.max(currentDays.length, 1) / 2)) {
+        tooltip.classList.remove("is-visible"); return;
+      }
+      tooltip.innerHTML = hit.text.includes("<br>") ? hit.text : `${dateLabel(hit.day.diary_date)}<br><b>${hit.text}</b>`;
+      tooltip.style.left = `${Math.min(event.clientX + 14, window.innerWidth - 245)}px`;
+      tooltip.style.top = `${Math.max(8, event.clientY - 55)}px`;
+      tooltip.classList.add("is-visible");
+    });
+    canvas.addEventListener("mouseleave", () => tooltip.classList.remove("is-visible"));
+    canvas.addEventListener("click", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const hits = chartHits.get(canvas.id) || [];
+      const hit = hits.reduce((best, item) => !best || Math.abs(item.x - (event.clientX - rect.left)) < Math.abs(best.x - (event.clientX - rect.left)) ? item : best, null);
+      if (hit && hit.day) openDay(hit.day);
+    });
   });
 
   let resizeFrame = null;
