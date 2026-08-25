@@ -284,6 +284,8 @@ h1 {
 
 .daily-table tbody tr:last-child td { border-bottom: 0; }
 .daily-table tbody tr:hover { background: rgba(220, 238, 231, 0.28); }
+.daily-table tbody tr { cursor: pointer; }
+.daily-table tbody tr:focus-visible { outline: 3px solid var(--green); outline-offset: -3px; }
 .daily-table tr.is-in-progress { background: #faf7ef; }
 
 .date-cell strong,
@@ -348,8 +350,25 @@ h1 {
 .dot.sleep { background: var(--lime); }
 .dot.activity { background: var(--blue); }
 
-.canvas-wrap { min-height: 300px; }
-canvas { display: block; width: 100%; height: 300px; }
+.canvas-wrap { position: relative; min-height: 300px; }
+canvas { display: block; width: 100%; height: 300px; cursor: crosshair; }
+
+.chart-tooltip { position: fixed; z-index: 30; display: none; max-width: 230px; padding: 9px 11px; color: var(--surface); background: var(--ink); border-radius: 8px; box-shadow: 0 8px 24px rgba(31, 41, 37, .2); font-size: 12px; line-height: 1.45; pointer-events: none; }
+.chart-tooltip.is-visible { display: block; }
+.day-dialog { width: min(760px, calc(100% - 28px)); max-height: 86vh; padding: 0; color: var(--ink); background: var(--surface); border: 0; border-radius: 16px; box-shadow: 0 24px 80px rgba(31, 41, 37, .3); }
+.day-dialog::backdrop { background: rgba(31, 41, 37, .55); backdrop-filter: blur(3px); }
+.day-dialog-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 24px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.day-dialog-head span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.day-dialog-head h2 { margin: 4px 0 0; }
+.dialog-close { width: 36px; height: 36px; color: var(--ink); background: var(--line); border: 0; border-radius: 50%; font-size: 24px; cursor: pointer; }
+#dayDialogContent { padding: 20px 24px 26px; }
+.day-total { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.day-total span { padding: 7px 10px; background: #e8f3ee; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.meal-detail { margin-top: 20px; }
+.meal-detail h3 { margin: 0 0 9px; font-size: 15px; }
+.food-detail { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(5, auto); gap: 8px 14px; padding: 11px 0; border-top: 1px solid var(--line); align-items: baseline; font-size: 12px; }
+.food-detail strong { font-size: 13px; }
+.food-detail small { grid-column: 1 / -1; color: var(--muted); line-height: 1.45; }
 
 .panel-dark {
   color: var(--surface);

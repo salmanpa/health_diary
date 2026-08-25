@@ -77,6 +77,15 @@
       </div>
     </section>
 
+    <dialog class="day-dialog" id="dayDialog" aria-labelledby="dayDialogTitle">
+      <div class="day-dialog-head">
+        <div><span>Питание за день</span><h2 id="dayDialogTitle">—</h2></div>
+        <button type="button" class="dialog-close" id="dayDialogClose" aria-label="Закрыть">×</button>
+      </div>
+      <div id="dayDialogContent"></div>
+    </dialog>
+    <div class="chart-tooltip" id="chartTooltip" role="status" aria-live="polite"></div>
+
     <section class="section" id="nutrition">
       <div class="section-head">
         <div><p>02 · Питание</p><h2>Энергия и БЖУ по дням</h2></div>

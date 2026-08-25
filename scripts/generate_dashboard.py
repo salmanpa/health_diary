@@ -87,6 +87,18 @@ def build_payload(database: Path) -> dict[str, object]:
         )
     )
 
+    nutrition_entries = rows_as_dicts(
+        connection.execute(
+            """
+            SELECT d.diary_date, n.meal_type, n.eaten_at, n.food_name, n.weight_g,
+                   n.calories_kcal, n.protein_g, n.fat_g, n.carbs_g, n.notes
+            FROM nutrition_entries AS n
+            JOIN calendar_days AS d ON d.id = n.calendar_day_id
+            ORDER BY d.diary_date, n.id
+            """
+        )
+    )
+
     workouts = rows_as_dicts(
         connection.execute(
             """
@@ -215,6 +227,7 @@ def build_payload(database: Path) -> dict[str, object]:
         },
         "daily": daily,
         "meals": meals,
+        "nutrition_entries": nutrition_entries,
         "workouts": workouts,
         "nutrients": nutrients,
         "nutrient_references": nutrient_references,
