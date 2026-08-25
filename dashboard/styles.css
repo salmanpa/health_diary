@@ -10,6 +10,9 @@
   --blue: #5278d7;
   --orange: #e0774f;
   --yellow: #d2a83f;
+  --protein-soft: #e8eefc;
+  --fat-soft: #f9e9e2;
+  --carbs-soft: #f8f0d8;
   --lime: #bbf07b;
   --danger-soft: #f4e1da;
   --shadow: 0 12px 32px rgba(31, 41, 37, 0.055);
@@ -350,6 +353,22 @@ h1 {
 .dot.sleep { background: var(--lime); }
 .dot.activity { background: var(--blue); }
 
+.macro-group,
+.macro-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.kpi .macro-group { margin-top: 15px; }
+.macro-chip { display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; font-size: 11px; font-weight: 650; line-height: 1; white-space: nowrap; }
+.macro-chip.protein { color: #315ab8; background: var(--protein-soft); border-color: #cbd9f8; }
+.macro-chip.fat { color: #b34f2b; background: var(--fat-soft); border-color: #f0cdbf; }
+.macro-chip.carbs { color: #806213; background: var(--carbs-soft); border-color: #eadba8; }
+.macro-chip .macro-symbol { width: 11px; font-size: 9px; text-align: center; }
+.macro-chip .macro-value { display: inline; margin: 0; color: currentColor; font-size: inherit; letter-spacing: 0; }
+.macro-chip .macro-unit { color: currentColor; font-size: 9px; opacity: .72; }
+.macro-heading span { margin-right: 3px; }
+.macro-heading.protein { color: #315ab8; }
+.macro-heading.fat { color: #b34f2b; }
+.macro-heading.carbs { color: #806213; }
+.macro-cell .macro-chip { min-width: 66px; justify-content: flex-start; }
+
 .canvas-wrap { position: relative; min-height: 300px; }
 canvas { display: block; width: 100%; height: 300px; cursor: crosshair; }
 
@@ -363,12 +382,15 @@ canvas { display: block; width: 100%; height: 300px; cursor: crosshair; }
 .dialog-close { width: 36px; height: 36px; color: var(--ink); background: var(--line); border: 0; border-radius: 50%; font-size: 24px; cursor: pointer; }
 #dayDialogContent { padding: 20px 24px 26px; }
 .day-total { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.day-total span { padding: 7px 10px; background: #e8f3ee; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.day-total > span { padding: 7px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; }
+.day-total .energy-chip { background: #e8f3ee; }
+.day-total .macro-chip { padding: 7px 10px; }
 .meal-detail { margin-top: 20px; }
 .meal-detail h3 { margin: 0 0 9px; font-size: 15px; }
 .food-detail { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(5, auto); gap: 8px 14px; padding: 11px 0; border-top: 1px solid var(--line); align-items: baseline; font-size: 12px; }
 .food-detail strong { font-size: 13px; }
 .food-detail small { grid-column: 1 / -1; color: var(--muted); line-height: 1.45; }
+.food-detail .macro-chip { justify-self: start; }
 
 .panel-dark {
   color: var(--surface);

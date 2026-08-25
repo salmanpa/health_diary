@@ -292,6 +292,19 @@ ON CONFLICT (nutrition_entry_id, component_name) DO UPDATE SET
     confidence = excluded.confidence,
     notes = excluded.notes;
 
+-- Голубика, добавленная пользователем к ужину 25 августа.
+INSERT INTO nutrition_components (nutrition_entry_id, component_name, estimated_weight_g, reference_fdc_id, confidence, notes)
+SELECT n.id, 'Голубика', 40, 171711, 'high',
+       'Масса 40 г сообщена пользователем. Сырая голубика USDA FoodData Central — воспроизводимый справочный профиль, а не измерение конкретных ягод.'
+FROM nutrition_entries AS n
+JOIN calendar_days AS d ON d.id = n.calendar_day_id
+WHERE d.diary_date='2026-08-25' AND n.meal_type='dinner' AND n.food_name='Голубика'
+ON CONFLICT (nutrition_entry_id, component_name) DO UPDATE SET
+    estimated_weight_g=excluded.estimated_weight_g,
+    reference_fdc_id=excluded.reference_fdc_id,
+    confidence=excluded.confidence,
+    notes=excluded.notes;
+
 -- Компоненты новых записей 24–25 августа.
 WITH component_data (diary_date, meal_type, entry_food_name, component_name, weight_g, fdc_id, confidence, notes) AS (
  VALUES

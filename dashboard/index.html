@@ -46,7 +46,7 @@
     <section class="kpi-grid" aria-label="Ключевые показатели периода">
       <article class="kpi"><span>Дней / завершено</span><strong id="daysKpi">—</strong><small id="daysMeta">—</small></article>
       <article class="kpi"><span>Калории</span><strong id="caloriesKpi">—</strong><small>среднее завершённых дней</small></article>
-      <article class="kpi"><span>Средние Б / Ж / У</span><strong id="macrosKpi">—</strong><small>граммов в день</small></article>
+      <article class="kpi"><span>Средние макронутриенты</span><strong id="macrosKpi" class="macro-group">—</strong><small>граммов в день</small></article>
       <article class="kpi"><span>Сон</span><strong id="sleepKpi">—</strong><small id="sleepMeta">по записанным дням</small></article>
       <article class="kpi"><span>Тренировки / нед</span><strong id="trainingKpi">—</strong><small id="trainingMeta">—</small></article>
     </section>
@@ -63,9 +63,9 @@
               <tr>
                 <th>Дата</th>
                 <th>Ккал</th>
-                <th>Белки</th>
-                <th>Жиры</th>
-                <th>Углеводы</th>
+                <th class="macro-heading protein"><span aria-hidden="true">●</span> Белки</th>
+                <th class="macro-heading fat"><span aria-hidden="true">◆</span> Жиры</th>
+                <th class="macro-heading carbs"><span aria-hidden="true">■</span> Углеводы</th>
                 <th>Сон</th>
                 <th>Тренировка</th>
                 <th>Оценка</th>
@@ -97,7 +97,7 @@
           <div class="canvas-wrap"><canvas id="calorieChart" role="img" aria-label="Калории по дням"></canvas></div>
         </article>
         <article class="panel panel-wide">
-          <div class="panel-head"><div><span>Макронутриенты</span><strong>Белки, жиры и углеводы</strong></div><div class="legend"><i class="dot protein"></i>Б <i class="dot fat"></i>Ж <i class="dot carbs"></i>У</div></div>
+          <div class="panel-head"><div><span>Макронутриенты</span><strong>Белки, жиры и углеводы</strong></div><div class="legend macro-legend"><span class="macro-chip protein"><b aria-hidden="true">●</b> Белки</span><span class="macro-chip fat"><b aria-hidden="true">◆</b> Жиры</span><span class="macro-chip carbs"><b aria-hidden="true">■</b> Углеводы</span></div></div>
           <div class="canvas-wrap"><canvas id="macroChart" role="img" aria-label="Белки, жиры и углеводы по дням"></canvas></div>
         </article>
       </div>

@@ -125,6 +125,24 @@
     return node;
   }
 
+  function macroChip(type, value, incomplete = false, compact = false) {
+    const labels = {
+      protein: { short: "Б", full: "Белки", symbol: "●" },
+      fat: { short: "Ж", full: "Жиры", symbol: "◆" },
+      carbs: { short: "У", full: "Углеводы", symbol: "■" },
+    };
+    const label = labels[type];
+    const chip = element("span", `macro-chip ${type}`);
+    chip.setAttribute("aria-label", `${label.full}: ${incomplete ? "не менее " : ""}${format(value, 1)} грамма`);
+    chip.append(
+      element("b", "macro-symbol", label.symbol),
+      element("span", "macro-label", compact ? label.short : label.full),
+      element("strong", "macro-value", `${incomplete ? "≥ " : ""}${format(value, 1)}`),
+      element("small", "macro-unit", "г")
+    );
+    return chip;
+  }
+
   function daysForMonth() {
     return payload.daily.filter((day) => day.diary_date.startsWith(selectedMonth));
   }
@@ -183,9 +201,14 @@
     setText("daysKpi", `${days.length} / ${full.length}`);
     setText("daysMeta", `${days.length - full.length} ${plural(days.length - full.length, ["день заполняется", "дня заполняются", "дней заполняются"])}`);
     setText("caloriesKpi", calorieAverage === null ? "—" : `${format(calorieAverage)} ккал`);
-    setText("macrosKpi", proteinAverage === null
-      ? "—"
-      : `${format(proteinAverage)} / ${format(fatAverage)} / ${format(carbsAverage)}`);
+    const macrosKpi = document.getElementById("macrosKpi");
+    macrosKpi.replaceChildren();
+    if (proteinAverage === null) macrosKpi.textContent = "—";
+    else macrosKpi.append(
+      macroChip("protein", proteinAverage, false, true),
+      macroChip("fat", fatAverage, false, true),
+      macroChip("carbs", carbsAverage, false, true)
+    );
     setText("sleepKpi", sleepAverage === null ? "—" : formatHours(sleepAverage));
     setText("sleepMeta", `${sleepValues.length} ${plural(sleepValues.length, ["ночь", "ночи", "ночей"])} с данными`);
     setText("trainingKpi", workoutsPerWeek === null ? "—" : format(workoutsPerWeek, trackedWeeks > 1 ? 1 : 0));
@@ -233,7 +256,11 @@
         day.has_sleep ? formatHours(day.sleep_minutes) : "нет записи",
       ];
       values.forEach((value, index) => {
-        const cell = element("td", index === 0 ? "value-strong" : "", value);
+        const macroTypes = [null, "protein", "fat", "carbs"];
+        const cell = element("td", index === 0 ? "value-strong" : macroTypes[index] ? "macro-cell" : "", value);
+        if (macroTypes[index]) {
+          cell.replaceChildren(macroChip(macroTypes[index], day[`${macroTypes[index]}_g`], incompleteMacros, true));
+        }
         row.appendChild(cell);
       });
 
@@ -251,8 +278,12 @@
     setText("dayDialogTitle", dateLabel(day.diary_date));
     content.replaceChildren();
     const total = element("div", "day-total");
-    [`${format(day.calories_kcal)} ккал`, `Б ${format(day.protein_g, 1)} г`, `Ж ${format(day.fat_g, 1)} г`, `У ${format(day.carbs_g, 1)} г`]
-      .forEach((value) => total.appendChild(element("span", "", value)));
+    total.append(
+      element("span", "energy-chip", `${format(day.calories_kcal)} ккал`),
+      macroChip("protein", day.protein_g),
+      macroChip("fat", day.fat_g),
+      macroChip("carbs", day.carbs_g)
+    );
     content.appendChild(total);
     Object.keys(mealNames).forEach((mealType) => {
       const mealEntries = entries.filter((item) => item.meal_type === mealType);
@@ -265,9 +296,9 @@
           element("strong", "", item.food_name),
           element("span", "", item.weight_g === null ? "масса —" : `${format(item.weight_g, 1)} г`),
           element("span", "", `${format(item.calories_kcal)} ккал`),
-          element("span", "", `Б ${format(item.protein_g, 1)}`),
-          element("span", "", `Ж ${format(item.fat_g, 1)}`),
-          element("span", "", `У ${format(item.carbs_g, 1)}`)
+          macroChip("protein", item.protein_g, false, true),
+          macroChip("fat", item.fat_g, false, true),
+          macroChip("carbs", item.carbs_g, false, true)
         );
         if (item.notes) food.appendChild(element("small", "", item.notes));
         section.appendChild(food);
