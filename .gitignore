@@ -3,3 +3,9 @@ data/*.sqlite3-shm
 data/*.sqlite3-wal
 .DS_Store
 .env
+node_modules/
+.pnpm-store/
+.vite/
+coverage/
+playwright-report/
+test-results/

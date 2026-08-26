@@ -365,6 +365,22 @@ WITH profile_map (food_name, reference_fdc_id, confidence) AS (
     LEFT JOIN profile_map AS p ON p.food_name = n.food_name
     WHERE d.diary_date BETWEEN '2026-08-21' AND '2026-08-25'
       AND n.food_name <> 'Яичница из 2 яиц'
+      -- These entries already have canonical components in the preceding
+      -- block. Excluding them prevents a semantic duplicate whose different
+      -- component_name would bypass the UNIQUE constraint. It also preserves
+      -- the exact profile selected there for mashed potato and steamed chicken.
+      AND NOT (
+          (d.diary_date = '2026-08-24' AND n.food_name = 'Сэндвич с курицей')
+          OR (d.diary_date = '2026-08-25' AND n.food_name IN (
+              'Салат коул-слоу',
+              'Суп с консервированным тунцом',
+              'Картофельное пюре',
+              'Куриная грудка на пару',
+              'Суши с лососем и огурцом'
+          ))
+          OR (d.diary_date = '2026-08-25' AND n.meal_type = 'snack'
+              AND n.food_name IN ('Яблоко', 'Банан'))
+      )
 )
 INSERT INTO nutrition_components (
     nutrition_entry_id, component_name, estimated_weight_g,

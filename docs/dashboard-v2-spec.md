@@ -27,7 +27,7 @@ CDN, шрифты, телеметрию или API во время просмо�
 - Есть responsive CSS, `prefers-reduced-motion` и начальная клавиатурная
   поддержка таблицы.
 
-## Что сейчас ограничивает качество
+## Что ограничивало качество v1
 
 1. `dashboard/app.js` вручную рисует четыре Canvas-графика и обслуживает
    hit-testing, tooltip и resize. Значения внутри Canvas недоступны с
@@ -172,17 +172,19 @@ App shell
 
 ## Аналитический контракт
 
-### Состояния данных
+### Независимые оси состояния данных
 
-Каждая метрика несёт одно из состояний:
+Состояние метрики нельзя сжимать в один enum. Snapshot v2 хранит независимые
+оси, которые могут сочетаться друг с другом:
 
-- `measured` — измерено пользователем/устройством;
-- `labelled` — рассчитано по точной этикетке и массе;
-- `estimated` — центральная оценка с low/high и confidence;
-- `known_minimum` — часть источников не покрыта;
-- `explicit_zero` — пользователь явно сообщил отсутствие;
-- `missing` — записи нет;
-- `in_progress` — день ещё может измениться.
+- `dayStatus`: `complete`, `in_progress`, `missing_date`;
+- `valueStatus`: `present`, `explicit_zero`, `missing`;
+- `provenance`: `measured`, `labelled`, `calculated`, `estimated`, `unknown`;
+- `completeness`: `complete`, `known_minimum`;
+- `confidence`: `high`, `medium`, `low`, `unknown`.
+
+Например, одно значение одновременно может быть `estimated`,
+`known_minimum`, `low` и находиться в дне `in_progress`.
 
 UI не имеет права преобразовывать `missing` в `0`. Для каждого среднего
 показываются правила включения, `n/N`, диапазон и coverage. Незавершённые дни
@@ -206,20 +208,21 @@ UI не имеет права преобразовывать `missing` в `0`. �
 
 ```json
 {
-  "contract_version": "2",
-  "schema_version": "...",
-  "calculation_version": "...",
-  "generated_at": "2026-08-26T...+03:00",
+  "contractVersion": "2.0",
+  "schemaVersion": "...",
+  "calculationVersion": "...",
+  "generatedAt": "2026-08-26T...+03:00",
   "timezone": "Europe/Moscow",
-  "latest_source_date": "2026-08-25",
-  "source_commit": "...",
+  "latestSourceDate": "2026-08-25",
+  "sourceCommit": "...",
+  "sourceHash": "...",
   "period": {"from": "...", "to": "..."}
 }
 ```
 
-У ежедневной метрики должны быть `value`, `low`, `high`, `unit`, `state`,
-`source`, `confidence`, `coverage` и `n`, где применимо. События питания должны
-иметь стабильный `meal_event_id`.
+У ежедневной метрики должны быть `value`, `low`, `high`, `unit`, независимые
+`valueStatus`, `provenance`, `completeness`, `confidence`, а также `source`,
+`coverage` и `n`. События питания должны иметь стабильный `meal_event_id`.
 
 Генератор делает allowlist полей. Автоматический тест запрещает `expenses`,
 `amount_rub` и финансовые notes в health snapshot. Свободный приватный текст
@@ -304,16 +307,35 @@ UI не имеет права преобразовывать `missing` в `0`. �
 - пульс покоя/HRV только из стабильного устройства;
 - пищеварительный комфорт или голод — необязательно и без медицинских выводов.
 
-## План миграции
+## Статус реализации Dashboard v2
 
-1. Исправить известные дефекты данных и определить `DashboardSnapshotV2`:
+Версия v2 реализована как self-contained production bundle на
+`Vite + TypeScript + React + ECharts (SVG) + Radix Dialog`. Источник интерфейса
+находится в `dashboard-src/`, deliberate snapshot — в
+`dashboard-src/data/snapshot.json`, а готовый автономный файл — в
+`dashboard/index.html`. Сборка интерфейса не обновляет данные; полный refresh
+остаётся отдельной явной командой.
+
+Реализованы независимые оси `dayStatus`, `valueStatus`, `provenance`,
+`completeness` и `confidence`, непрерывная календарная ось, per-nutrient
+count/mass coverage, privacy allowlist, фильтры 7/14/30/всё, KPI с `n/N`,
+связанный timeline, единый day drawer, nutrient heatmap, quality-раздел,
+семантические таблицы и мобильная нижняя навигация. Energy-weighted coverage,
+структурные low/high диапазоны и полноценная visual regression остаются
+заделами: исходная схема пока не содержит достаточно данных для честного
+расчёта первых двух, а browser-сценарий следует запускать в окружении с
+доступным UI-браузером.
+
+## План миграции (история решения)
+
+1. ✅ Исправить известные дефекты данных и определить `DashboardSnapshotV2`:
    missingness, low/central/high, confidence, coverage и provenance.
-2. Добавить per-nutrient coverage, тесты приватного allowlist и snapshot meta.
-3. Поднять Vite/TypeScript/React рядом с текущей страницей и читать v1 через
-   адаптер; текущий дашборд остаётся рабочим fallback.
-4. Перенести app shell, day drawer и семантические таблицы.
-5. Заменить Canvas на ECharts после parity по значениям, клавиатуре и mobile.
+2. ✅ Добавить per-nutrient coverage, тесты приватного allowlist и snapshot meta.
+3. ✅ Поднять Vite/TypeScript/React и версионированный snapshot v2.
+4. ✅ Перенести app shell, day drawer и семантические таблицы.
+5. ✅ Заменить Canvas на ECharts SVG с ARIA и табличными эквивалентами.
 6. Добавить диапазоны, quality heatmap и новые метрики только после появления
    структурных полей.
-7. Удалить v1 после воспроизводимого сравнения snapshot, accessibility-аудита
-   и visual regression на desktop и mobile.
+7. ✅ Удалить v1 после воспроизводимого сравнения snapshot и автоматических
+   accessibility-проверок; полноценная visual regression на desktop/mobile
+   остаётся отдельным следующим шагом.

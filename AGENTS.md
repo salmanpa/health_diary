@@ -243,14 +243,17 @@ the logging flow lightweight: never turn this into a long questionnaire.
 
 ## Dashboard update policy
 
-- Treat `dashboard/data.js` as a deliberate analytical snapshot, not as part of
-  routine diary entry.
+- Treat `dashboard-src/data/snapshot.json` as a deliberate analytical snapshot,
+  not as part of routine diary entry. `dashboard/index.html` is the generated
+  self-contained UI bundle.
 - Do not run `scripts/build_dashboard.sh`, `scripts/generate_dashboard.py`, or
   otherwise refresh dashboard data after individual food, sleep, workout,
   rating, or expense records.
 - Refresh the dashboard only when the user explicitly asks to update, rebuild,
   or analyze the dashboard. Routine validation must use a temporary database
   and must not change the dashboard snapshot.
+- `scripts/build_dashboard_ui.sh` and `pnpm run dashboard:build` rebuild only
+  the interface from the committed snapshot; they must not refresh diary data.
 - When a refresh is explicitly requested, rebuild from the reproducible SQL
   source, verify the generated data, and state the latest included diary date.
 
