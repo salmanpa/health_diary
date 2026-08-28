@@ -2280,3 +2280,43 @@ WITH bases(base_type,notes) AS (VALUES
 INSERT INTO daily_food_bases (calendar_day_id,base_type,notes)
 SELECT d.id,b.base_type,b.notes FROM bases b JOIN calendar_days d ON d.diary_date='2026-08-26'
 ON CONFLICT(calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;
+
+-- Дневник за 27 августа: полный рацион, сон, функционально-силовая
+-- тренировка и итоговая пользовательская оценка.
+INSERT INTO calendar_days (diary_date, status, notes)
+VALUES ('2026-08-27', 'complete', 'Записаны питание, 7,5 часа сна и функционально-силовая тренировка 65 минут с сообщённым расходом 440 ккал. День завершён после итоговой оценки пользователя 3 из 5.')
+ON CONFLICT (diary_date) DO UPDATE SET status=excluded.status, notes=excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT id, 450, 'Продолжительность сна 7,5 часа сообщена пользователем; время начала, окончания и качество сна не указаны.'
+FROM calendar_days WHERE diary_date='2026-08-27'
+ON CONFLICT (calendar_day_id) DO UPDATE SET duration_minutes=excluded.duration_minutes, quality_score=NULL, notes=excluded.notes;
+
+WITH meal_data (meal_type, food_name, weight_g, calories, protein, fat, carbs, notes) AS (
+ VALUES
+  ('breakfast','Вода с лимоном и чиа; яичница; овощной салат с мини-моцареллой; фасоль; банан',718,420,22,20,43,'Факты пользователя: стакан воды, чайная ложка чиа, 2 яйца, 200 г салата без заправки с перечисленным составом, 30 г фасоли и банан. Допущения: 250 г воды, 5 г чиа, 10 г лимона, 3 г масла для яичницы, 120 г съедобной части банана и 25 г моцареллы в салате. Диапазон 360–510 ккал. Уверенность низкая из-за доли моцареллы, масла и размера банана. Утренний напиток и завтрак объединены в одну исчерпывающую запись, так как точное время событий не сообщено.'),
+  ('lunch','Овощной салат; уха; пюре с шампиньонами и куриным шашлыком',830,610,62,18,51,'Факты пользователя: 120 г салата без заправки, 340 г ухи и 370 г основного блюда. На фото читаются карточки: уха — 87,43 ккал, Б 9,25 г, Ж 2,16 г, У 8,02 г на 100 г; пюре — 62,45 ккал, Б 1,1 г, Ж 3,36 г, У 6,94 г; шампиньоны — 46,2 ккал, Б 3,76 г, Ж 3,21 г, У 0,59 г; куриный шашлык — 110,87 ккал, Б 19,22 г, Ж 1,89 г, У 4,24 г. Допущение: 170 г пюре, 70 г грибов и 130 г шашлыка. Центрально 610 ккал; диапазон 555–670 ккал из-за неизвестного распределения 370 г основного блюда. Уверенность средняя для этикеточных БЖУ, низкая для долей компонентов.'),
+  ('snack','Банан; яблоко; 3 куска сырной пиццы; попкорн; безалкогольное пиво',1680,1650,43,53,247,'Факты пользователя: банан, яблоко, 3 средних куска сырной пиццы; для попкорна сообщены 345 ккал, Б 4,5 г, Ж 17,8 г, У 41,7 г; для безалкогольного пива — 270 ккал и 58 г углеводов. Допущения: 120 г банана, 150 г яблока, 330 г пиццы и 80 г попкорна. Объём пива 1 л и приведённые калории/углеводы за весь этот объём уточнены пользователем. Диапазон 1390–1910 ккал, главным образом из-за размера и рецепта пиццы. Калорийность пива сохранена по сообщению пользователя: 4/9/4 даёт 232 ккал; разницу могут объяснять округление этикетки и органические кислоты.'),
+  ('dinner','Слабосолёная форель на багете; руккола; помидор; манго',180,220,13,6,31,'Факты пользователя: 40 г слабосолёной форели, 40 г багета, 30 г рукколы, 30 г помидора и 40 г манго. Масло и соусы не указаны и не включены. Диапазон 195–245 ккал из-за профиля форели и хлеба. Уверенность высокая по порциям, средняя по профилям.')
+)
+INSERT INTO nutrition_entries (calendar_day_id, meal_type, food_name, weight_g, calories_kcal, protein_g, fat_g, carbs_g, notes)
+SELECT d.id,m.meal_type,m.food_name,m.weight_g,m.calories,m.protein,m.fat,m.carbs,m.notes
+FROM meal_data m JOIN calendar_days d ON d.diary_date='2026-08-27'
+WHERE NOT EXISTS (SELECT 1 FROM nutrition_entries n WHERE n.calendar_day_id=d.id AND n.meal_type=m.meal_type AND n.food_name=m.food_name);
+
+INSERT INTO workouts (calendar_day_id, workout_type, duration_minutes, calories_burned_kcal, notes)
+SELECT id,'functional_strength',65,440,'Тип, продолжительность и расход калорий сообщены пользователем. RPE и пульс не указаны, поэтому физиологическая интенсивность остаётся неизвестной; 440 ккал сохранены как сообщённое, а не расчётное значение.'
+FROM calendar_days WHERE diary_date='2026-08-27'
+  AND NOT EXISTS (SELECT 1 FROM workouts w WHERE w.calendar_day_id=calendar_days.id AND w.workout_type='functional_strength' AND w.duration_minutes=65);
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id,3,'Итоговая оценка дня сообщена пользователем: 3 из 5.' FROM calendar_days WHERE diary_date='2026-08-27'
+ON CONFLICT (calendar_day_id) DO UPDATE SET rating=excluded.rating, notes=excluded.notes;
+
+WITH bases(base_type,notes) AS (VALUES
+ ('chicken','Куриный шашлык и куриные яйца явно указаны пользователем.'),
+ ('fish','Уха и слабосолёная форель явно указаны пользователем; форель является finfish.')
+)
+INSERT INTO daily_food_bases (calendar_day_id,base_type,notes)
+SELECT d.id,b.base_type,b.notes FROM bases b JOIN calendar_days d ON d.diary_date='2026-08-27'
+ON CONFLICT(calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;
