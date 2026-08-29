@@ -2358,3 +2358,42 @@ INSERT INTO daily_ratings (calendar_day_id, rating, notes)
 SELECT id,2,'Итоговая оценка дня сообщена пользователем: 2 из 5.'
 FROM calendar_days WHERE diary_date='2026-08-28'
 ON CONFLICT (calendar_day_id) DO UPDATE SET rating=excluded.rating, notes=excluded.notes;
+
+-- Завершённая запись дневника за 29 августа.
+INSERT INTO calendar_days (diary_date, status, notes)
+VALUES ('2026-08-29', 'complete', 'Записаны 6 часов сна, полный рацион и пробежка 6,5 км за 36 минут. День завершён после итоговой оценки пользователя 5 из 5.')
+ON CONFLICT (diary_date) DO UPDATE SET status=excluded.status, notes=excluded.notes;
+
+INSERT INTO sleep_entries (calendar_day_id, duration_minutes, notes)
+SELECT id, 360, 'Продолжительность сна 6 часов сообщена пользователем; время начала, окончания и качество сна не указаны.'
+FROM calendar_days WHERE diary_date='2026-08-29'
+ON CONFLICT (calendar_day_id) DO UPDATE SET duration_minutes=excluded.duration_minutes, quality_score=NULL, notes=excluded.notes;
+
+INSERT INTO workouts (calendar_day_id, workout_type, duration_minutes, distance_km, average_pace_seconds_per_km, calories_burned_kcal, notes)
+SELECT id, 'running', 36, 6.5, 332, 416,
+       'Дистанция 6,5 км и продолжительность 36 минут сообщены пользователем. Средний темп рассчитан как 5:32/км. Расход 416 ккал рассчитан по приближению 1 ккал × 64 кг × 6,5 км; это оценка, а не значение устройства. RPE и пульс не указаны, поэтому физиологическая интенсивность неизвестна.'
+FROM calendar_days WHERE diary_date='2026-08-29'
+  AND NOT EXISTS (SELECT 1 FROM workouts w WHERE w.calendar_day_id=calendar_days.id AND w.workout_type='running' AND w.duration_minutes=36 AND w.distance_km=6.5);
+
+WITH meal_data (meal_type, food_name, weight_g, calories, protein, fat, carbs, notes) AS (
+ VALUES
+  ('breakfast','Вода с лимоном и семенами чиа',265,30,1,1.5,3,'Отдельное утреннее событие. Факты пользователя: стакан воды с лимоном и чайная ложка чиа. Допущения: 250 г воды, 5 г чиа и 10 г лимона; диапазон 20–40 ккал. Основа массы: as_eaten. Уверенность низкая: объём стакана и количество лимона неизвестны.'),
+  ('breakfast','Круассан с Almette и копчёным тунцом',130,366,18.5,19.5,28.5,'Факты пользователя: один круассан с Almette и 50 г копчёного тунца. Допущения: круассан 60 г и сливочный сыр 20 г; диапазон порции 105–165 г, 300–470 ккал. Основа массы: as_eaten. Источник порции: масса тунца и стандартные порции остальных продуктов. Источник БЖУ: типовые справочные значения. Уверенность низкая; главные неопределённости — размер круассана, количество Almette и жирность копчёного тунца.'),
+  ('lunch','Лапша; 3 молочные сосиски; белые грибы; манго; маракуйя; ежевика; малина; ананас',578,832,30,39,89,'Факты пользователя: порция лапши, 3 молочные сосиски, 20 г белых грибов, 50 г манго, 1 маракуйя, 20 г ежевики, 30 г малины и 40 г ананаса. Допущения: готовая лапша 250 г, сосиски 150 г суммарно, съедобная мякоть маракуйи 18 г; масло и соус не заявлены и не включены. Диапазон порции 400–700 г, 650–1050 ккал. Уверенность низкая; основные факторы — масса/вид лапши, масса и этикетка сосисок, возможные масло или соус.'),
+  ('dinner','Багет с Almette и копчёным тунцом; салат из рукколы и помидора',380,352,22,10.8,45,'Факты пользователя: тонко нарезанный багет с Almette и 40 г копчёного тунца; 250 г салата из рукколы и половины помидора. Допущения: багет 60 г, Almette 30 г; в салате 175 г рукколы и 75 г помидора. Заправка не указана и не включена. Диапазон 285–490 ккал; добавление 1 ст. л. масла дало бы ещё около 120 ккал. Уверенность низкая; основные факторы — масса хлеба и сыра, необычно большая оценочная доля рукколы и возможная заправка.'),
+  ('snack','Персик; грецкие орехи; макадамия; сушёная вишня; финики; миндаль; курага',180.5,319,5.5,18.5,33,'Факты пользователя: небольшой персик, 4 грецких ореха, 3 макадамии, 3 сушёные вишни, 2 финика, 2 миндаля и 1 курага. Допущения съедобной массы: 120, 16, 8, 6, 20, 2,5 и 8 г соответственно. Диапазон 230–430 ккал. Уверенность низкая; основные факторы — трактовка грецких орехов как четырёх очищенных ядер, размер фиников и возможный сахар в сушёной вишне. Проверка 4×Б + 9×Ж + 4×У согласуется с центральной энергией после учёта пищевых волокон в общей массе углеводов.')
+)
+INSERT INTO nutrition_entries (calendar_day_id, meal_type, food_name, weight_g, calories_kcal, protein_g, fat_g, carbs_g, notes)
+SELECT d.id,m.meal_type,m.food_name,m.weight_g,m.calories,m.protein,m.fat,m.carbs,m.notes
+FROM meal_data m JOIN calendar_days d ON d.diary_date='2026-08-29'
+WHERE NOT EXISTS (SELECT 1 FROM nutrition_entries n WHERE n.calendar_day_id=d.id AND n.meal_type=m.meal_type AND n.food_name=m.food_name);
+
+INSERT INTO daily_food_bases (calendar_day_id, base_type, notes)
+SELECT id,'fish','Копчёный тунец (finfish) явно указан пользователем на завтрак и ужин.'
+FROM calendar_days WHERE diary_date='2026-08-29'
+ON CONFLICT (calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;
+
+INSERT INTO daily_ratings (calendar_day_id, rating, notes)
+SELECT id,5,'Итоговая оценка дня сообщена пользователем: 5 из 5.'
+FROM calendar_days WHERE diary_date='2026-08-29'
+ON CONFLICT (calendar_day_id) DO UPDATE SET rating=excluded.rating, notes=excluded.notes;

@@ -18,8 +18,8 @@ import { snapshot } from "./snapshot";
 describe("Dashboard v2", () => {
   it("validates and loads the private v2 snapshot", () => {
     expect(snapshot.meta.contractVersion).toBe("2.0");
-    expect(snapshot.meta.latestSourceDate).toBe("2026-08-25");
-    expect(snapshot.days).toHaveLength(22);
+    expect(snapshot.meta.latestSourceDate).toBe("2026-08-29");
+    expect(snapshot.days).toHaveLength(26);
   });
 
   it("provides semantic navigation, filters and table alternatives", () => {
