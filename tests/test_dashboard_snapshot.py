@@ -46,11 +46,11 @@ class DashboardSnapshotTest(unittest.TestCase):
 
     def test_idempotent_source_counts_and_calendar_gaps(self):
         counts = self.payload["quality"]["counts"]
-        self.assertEqual(counts["calendarRows"], 18)
-        self.assertEqual(counts["calendarDates"], 22)
-        self.assertEqual(counts["nutritionEntries"], 156)
-        self.assertEqual(counts["components"], 393)
-        self.assertEqual(counts["linkedComponents"], 265)
+        self.assertEqual(counts["calendarRows"], 22)
+        self.assertEqual(counts["calendarDates"], 26)
+        self.assertEqual(counts["nutritionEntries"], 191)
+        self.assertEqual(counts["components"], 493)
+        self.assertEqual(counts["linkedComponents"], 304)
         missing = [day["date"] for day in self.payload["days"] if day["status"] == "missing_date"]
         self.assertEqual(missing, ["2026-08-14", "2026-08-15", "2026-08-16", "2026-08-17"])
 
@@ -72,7 +72,7 @@ class DashboardSnapshotTest(unittest.TestCase):
         self.assertEqual(august_four["protein"]["completeness"], "known_minimum")
 
     def test_per_nutrient_coverage_and_conservative_gate(self):
-        self.assertEqual(len(self.payload["nutrients"]), 22 * 11)
+        self.assertEqual(len(self.payload["nutrients"]), 26 * 11)
         covered = [item for item in self.payload["nutrients"] if item["metric"]["value"] is not None]
         self.assertTrue(covered)
         for item in covered:
