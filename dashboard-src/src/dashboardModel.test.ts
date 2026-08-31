@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { energyProfile, macroProfile, mealMacroHighlight, sleepSummary, trainingSummary } from "./dashboardModel";
+import { energyProfile, groupMealsByType, macroProfile, mealMacroHighlight, sleepSummary, trainingSummary } from "./dashboardModel";
 import { snapshot } from "./snapshot";
 
 describe("dashboard presentation model", () => {
@@ -52,18 +52,35 @@ describe("dashboard presentation model", () => {
     expect(mealMacroHighlight(chicken as NonNullable<typeof chicken>)).toMatchObject({ highProtein: true, highFat: false, highCarbs: false });
 
     const equalProteinAndFat = {
-      protein: { value: 20 }, fat: { value: 20 }, carbs: { value: 5 }, energy: { value: 300 },
+      protein: { value: 20 }, fat: { value: 20 }, carbs: { value: 5 },
     } as Parameters<typeof mealMacroHighlight>[0];
     expect(mealMacroHighlight(equalProteinAndFat).highProtein).toBe(false);
   });
 
-  it("highlights leading fat, strongly leading carbs, and energy above 800 kcal", () => {
-    const meal = (protein: number, fat: number, carbs: number, energy: number) => ({
-      protein: { value: protein }, fat: { value: fat }, carbs: { value: carbs }, energy: { value: energy },
+  it("highlights leading fat and strongly leading carbs", () => {
+    const meal = (protein: number, fat: number, carbs: number) => ({
+      protein: { value: protein }, fat: { value: fat }, carbs: { value: carbs },
     }) as Parameters<typeof mealMacroHighlight>[0];
 
-    expect(mealMacroHighlight(meal(20, 21, 5, 400))).toMatchObject({ highFat: true, highCarbs: false, highEnergy: false });
-    expect(mealMacroHighlight(meal(20, 10, 30, 800))).toMatchObject({ highCarbs: false, highEnergy: false });
-    expect(mealMacroHighlight(meal(20, 10, 31, 801))).toMatchObject({ highCarbs: true, highEnergy: true });
+    expect(mealMacroHighlight(meal(20, 21, 5))).toMatchObject({ highFat: true, highCarbs: false });
+    expect(mealMacroHighlight(meal(20, 10, 30))).toMatchObject({ highCarbs: false });
+    expect(mealMacroHighlight(meal(20, 10, 31))).toMatchObject({ highCarbs: true });
+  });
+
+  it("groups meals by category and highlights the aggregated energy above 800 kcal", () => {
+    const meals = snapshot.meals.filter((meal) => meal.date === "2026-08-26");
+    const groups = groupMealsByType(meals);
+    expect(groups.map((group) => group.mealType)).toEqual(["breakfast", "lunch", "dinner", "snack"]);
+    const breakfast = groups.find((group) => group.mealType === "breakfast");
+    expect(breakfast).toMatchObject({ energyValue: 829.4, energyStatus: "complete", highEnergy: true });
+    expect(breakfast?.meals).toHaveLength(7);
+
+    const missingEnergyMeal = {
+      ...breakfast!.meals[1],
+      energy: { ...breakfast!.meals[1].energy, value: null, valueStatus: "missing" as const },
+    };
+    const incompleteGroup = groupMealsByType([breakfast!.meals[0], missingEnergyMeal])[0];
+    expect(incompleteGroup.energyStatus).toBe("known_minimum");
+    expect(incompleteGroup.energyValue).toBe(breakfast!.meals[0].energy.value);
   });
 });

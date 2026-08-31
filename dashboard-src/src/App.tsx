@@ -33,6 +33,7 @@ import {
 } from "./analytics";
 import {
   energyProfile,
+  groupMealsByType,
   macroProfile,
   mealMacroHighlight,
   sleepSummary,
@@ -54,8 +55,8 @@ const PERIODS: Array<{ key: PeriodKey; label: string }> = [
   { key: "all", label: "Всё" },
 ];
 
-const MEAL_LABELS: Record<string, string> = {
-  breakfast: "Завтрак", lunch: "Обед", dinner: "Ужин", snack: "Перекус",
+const MEAL_GROUP_LABELS: Record<string, string> = {
+  breakfast: "Завтрак", lunch: "Обед", dinner: "Ужин", snack: "Перекусы",
 };
 
 const WORKOUT_LABELS: Record<string, string> = {
@@ -88,6 +89,17 @@ const CHART_PALETTE = {
 
 function metricValue(metric: Metric, digits = 0): string {
   return metric.valueStatus === "missing" ? "—" : formatNumber(metric.value, digits);
+}
+
+function mealGroupCountLabel(count: number): string {
+  return `${count} ${count === 1 ? "приём пищи" : count < 5 ? "приёма пищи" : "приёмов пищи"}`;
+}
+
+function dishCountLabel(count: number): string {
+  const mod100 = count % 100;
+  const mod10 = count % 10;
+  const noun = mod100 >= 11 && mod100 <= 14 ? "блюд" : mod10 === 1 ? "блюдо" : mod10 >= 2 && mod10 <= 4 ? "блюда" : "блюд";
+  return `${count} ${noun}`;
 }
 
 function paceLabel(seconds: number | null): string {
@@ -159,6 +171,7 @@ function averageMarkLine(value: number | null, label: string, color: string) {
 function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: (open: boolean) => void }) {
   const day = snapshot.days.find((item) => item.date === date) ?? null;
   const meals = snapshot.meals.filter((item) => item.date === date);
+  const mealGroups = groupMealsByType(meals);
   const workouts = snapshot.workouts.filter((item) => item.date === date);
   const sleep = snapshot.sleep.find((item) => item.date === date) ?? null;
   const nutrients = snapshot.nutrients.filter((item) => item.date === date && item.metric.value !== null);
@@ -183,20 +196,26 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
           {day.completeness.reasons.length ? <section className="drawer-section notice-list">
             <h3><CircleAlert size={18} /> Что не заполнено</h3><ul>{day.completeness.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           </section> : null}
-          <section className="drawer-section"><h3><Utensils size={18} /> Питание <span>{meals.length} событий</span></h3>
-            {meals.length ? <div className="meal-list">{meals.map((meal) => {
-              const highlight = mealMacroHighlight(meal);
-              return <article className="meal-card" key={meal.id}>
-                <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong className={highlight.highEnergy ? "energy-highlight" : undefined}>{formatNumber(meal.energy.value)} ккал</strong></div>
-                <div className="meal-macros">
-                  <span className={highlight.highProtein ? "protein-highlight" : ""}>Б {formatNumber(meal.protein.value, 1)}</span>
-                  <span className={highlight.highFat ? "fat-highlight" : ""}>Ж {formatNumber(meal.fat.value, 1)}</span>
-                  <span className={highlight.highCarbs ? "carbs-highlight" : ""}>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
-                </div>
-                <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>
-                {meal.components.length ? <ul className="component-list">{meal.components.map((component) => <li key={component.id}><span>{component.name}<small>{component.linked ? component.profileName ?? "есть профиль" : "без профиля микронутриентов"}</small></span><strong>{formatNumber(component.weightG)} г</strong></li>)}</ul> : <p className="empty-inline">Компоненты не реконструированы</p>}
-              </article>;
-            })}</div> : <p className="empty-state">Питание за этот день не записано.</p>}
+          <section className="drawer-section"><h3><Utensils size={18} /> Питание <span>{mealGroupCountLabel(mealGroups.length)}</span></h3>
+            {mealGroups.length ? <div className="meal-groups">{mealGroups.map((group) => <section className="meal-group" key={group.mealType}>
+              <div className="meal-group-header">
+                <div><h4>{MEAL_GROUP_LABELS[group.mealType] ?? group.mealType}</h4><span>{dishCountLabel(group.meals.length)}</span></div>
+                <strong className={`meal-group-total${group.highEnergy ? " energy-highlight" : ""}`}>{group.energyValue === null ? "—" : `${group.energyStatus === "known_minimum" ? "≥ " : ""}${formatNumber(group.energyValue)} ккал`}</strong>
+              </div>
+              <div className="meal-list">{group.meals.map((meal) => {
+                const highlight = mealMacroHighlight(meal);
+                return <article className="meal-card" key={meal.id}>
+                  <div className="meal-title"><div>{meal.eatenAt ? <span>{meal.eatenAt}</span> : null}<h5>{meal.title}</h5></div><strong>{formatNumber(meal.energy.value)} ккал</strong></div>
+                  <div className="meal-macros">
+                    <span className={highlight.highProtein ? "protein-highlight" : ""}>Б {formatNumber(meal.protein.value, 1)}</span>
+                    <span className={highlight.highFat ? "fat-highlight" : ""}>Ж {formatNumber(meal.fat.value, 1)}</span>
+                    <span className={highlight.highCarbs ? "carbs-highlight" : ""}>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
+                  </div>
+                  <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>
+                  {meal.components.length ? <ul className="component-list">{meal.components.map((component) => <li key={component.id}><span>{component.name}<small>{component.linked ? component.profileName ?? "есть профиль" : "без профиля микронутриентов"}</small></span><strong>{formatNumber(component.weightG)} г</strong></li>)}</ul> : <p className="empty-inline">Компоненты не реконструированы</p>}
+                </article>;
+              })}</div>
+            </section>)}</div> : <p className="empty-state">Питание за этот день не записано.</p>}
           </section>
           <section className="drawer-section two-columns"><div><h3><MoonStar size={18} /> Сон</h3>
             {sleep ? <dl className="fact-list"><div><dt>Длительность</dt><dd>{formatNumber((sleep.durationMinutes ?? 0) / 60, 1)} ч</dd></div><div><dt>Интервал</dt><dd>{sleep.startedAt ?? "—"} — {sleep.endedAt ?? "—"}</dd></div><div><dt>Качество</dt><dd>{sleep.quality ?? "—"}</dd></div></dl> : <p className="empty-inline">Нет записи</p>}

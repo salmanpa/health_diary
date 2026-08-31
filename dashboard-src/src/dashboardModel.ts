@@ -7,10 +7,9 @@ export interface MealMacroHighlight {
   highProtein: boolean;
   highFat: boolean;
   highCarbs: boolean;
-  highEnergy: boolean;
 }
 
-export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "carbs" | "energy">): MealMacroHighlight {
+export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "carbs">): MealMacroHighlight {
   const protein = meal.protein.value;
   const fat = meal.fat.value;
   const carbs = meal.carbs.value;
@@ -26,8 +25,52 @@ export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "ca
     highCarbs: macrosKnown
       && carbs > protein * rules.carbsToOtherMacroRatioExclusive
       && carbs > fat * rules.carbsToOtherMacroRatioExclusive,
-    highEnergy: meal.energy.value !== null && meal.energy.value > rules.energyKcalExclusive,
   };
+}
+
+export interface MealGroup {
+  mealType: string;
+  meals: MealEvent[];
+  energyValue: number | null;
+  energyStatus: "complete" | "known_minimum" | "missing";
+  highEnergy: boolean;
+}
+
+const MEAL_GROUP_ORDER = ["breakfast", "lunch", "dinner", "snack"];
+
+export function groupMealsByType(meals: MealEvent[]): MealGroup[] {
+  const grouped = new Map<string, MealEvent[]>();
+  for (const meal of meals) {
+    const group = grouped.get(meal.mealType) ?? [];
+    group.push(meal);
+    grouped.set(meal.mealType, group);
+  }
+
+  return [...grouped].map(([mealType, groupMeals]) => {
+    const knownEnergyValues = groupMeals
+      .map((meal) => meal.energy.value)
+      .filter((value): value is number => value !== null);
+    const energyValue = knownEnergyValues.length
+      ? knownEnergyValues.reduce((sum, value) => sum + value, 0)
+      : null;
+    const energyStatus = knownEnergyValues.length === 0
+      ? "missing"
+      : knownEnergyValues.length === groupMeals.length
+        ? "complete"
+        : "known_minimum";
+    return {
+      mealType,
+      meals: groupMeals,
+      energyValue,
+      energyStatus,
+      highEnergy: energyValue !== null && energyValue > PRESENTATION_RULES.mealHighlights.energyKcalExclusive,
+    } satisfies MealGroup;
+  }).sort((left, right) => {
+    const leftIndex = MEAL_GROUP_ORDER.indexOf(left.mealType);
+    const rightIndex = MEAL_GROUP_ORDER.indexOf(right.mealType);
+    return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex)
+      - (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex);
+  });
 }
 
 function mean(values: number[]): number | null {

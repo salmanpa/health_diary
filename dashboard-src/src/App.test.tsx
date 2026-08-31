@@ -45,6 +45,11 @@ describe("Dashboard v2", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(/25 августа/i)).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Питание/i })).toBeInTheDocument();
+    expect(within(dialog).getByText("4 приёма пищи")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Завтрак" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Обед" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Ужин" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Перекусы" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Сон/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Тренировки/i })).toBeInTheDocument();
     expect(within(dialog).queryByLabelText("Правила подсветки БЖУ блюда")).not.toBeInTheDocument();
@@ -54,7 +59,7 @@ describe("Dashboard v2", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть детали дня" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Открыть детали четверг, 27 августа" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Открыть детали среда, 26 августа" })[0]);
     expect(document.querySelectorAll(".energy-highlight").length).toBeGreaterThan(0);
   });
 });

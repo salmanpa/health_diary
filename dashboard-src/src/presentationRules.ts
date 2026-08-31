@@ -1,9 +1,6 @@
-/**
- * Presentation-only relative signals. They compare the selected period with
- * itself and are not calorie or macro targets.
- */
+/** Versioned presentation rules for period-relative signals and explicit UI thresholds. */
 export const PRESENTATION_RULES = {
-  version: "relative-signals-1.2",
+  version: "relative-signals-1.3",
   energy: {
     minimumDays: 7,
     relativeBandPercent: 15,
