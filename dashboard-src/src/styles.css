@@ -95,6 +95,11 @@ main { margin-left: 94px; padding: 42px clamp(24px, 4vw, 68px) 36px; max-width: 
 .span-12 { grid-column: span 12; }.span-7 { grid-column: span 7; }.span-5 { grid-column: span 5; }
 .chart { width: 100%; min-height: 280px; }
 .chart-timeline { min-height: 430px; }
+.legacy-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 8px; }
+.legacy-chart-card { padding: 18px 18px 4px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 16px; }
+.legacy-chart-card h3 { margin: 0 0 2px; font-size: 14px; }
+.legacy-chart-card.sleep { color: #fbfcf8; background: #263a34; border-color: #263a34; }
+.chart-legacy { min-height: 240px; }
 .chart-medium { min-height: 325px; }
 .chart-heatmap { min-height: 400px; }
 .chart-small { min-height: 195px; }
@@ -204,6 +209,7 @@ select { min-height: 44px; width: 100%; padding: 0 34px 0 11px; border: 1px soli
 }
 
 @media (max-width: 860px) {
+  .legacy-chart-grid { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   main { margin-left: 0; padding: 25px 18px 100px; }
   .page-header { align-items: flex-start; }.page-header h1 { font-size: 44px; }.snapshot-card { min-width: 250px; }

@@ -31,11 +31,13 @@ describe("Dashboard v2", () => {
     expect(sevenDays).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("table", { name: "Сводка по датам выбранного периода" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Дневные показатели на общей временной шкале" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Графики в прежнем виде" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Динамика макронутриентов" })).toBeInTheDocument();
   });
 
   it("opens the unified day drawer from the timeline", () => {
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Выбрать 25 августа" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Выбрать 25 августа" })[0]);
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(/25 августа/i)).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Питание/i })).toBeInTheDocument();
