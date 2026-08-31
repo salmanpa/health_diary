@@ -16,4 +16,8 @@ export const PRESENTATION_RULES = {
   sleep: {
     consistencyWindowMinutes: 30,
   },
+  mealHighlights: {
+    proteinEnergyShareAtOrAbovePercent: 25,
+    fatEnergyShareAtOrAbovePercent: 40,
+  },
 } as const;

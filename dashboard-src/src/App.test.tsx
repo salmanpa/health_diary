@@ -39,21 +39,6 @@ describe("Dashboard v2", () => {
     expect(screen.queryByText("Где аналитика сильна, а где осторожна")).not.toBeInTheDocument();
   });
 
-  it("renders all five named design variants from the shared model", () => {
-    const names = [
-      "Операционный обзор",
-      "Ночная лаборатория",
-      "БЖУ-бенто",
-      "Отчёт о восстановлении",
-      "Консоль данных",
-    ];
-    names.forEach((name, index) => {
-      const view = render(<App variantOverride={(index + 1) as 1 | 2 | 3 | 4 | 5} />);
-      expect(screen.getByText(new RegExp(name))).toBeInTheDocument();
-      view.unmount();
-    });
-  });
-
   it("opens the unified day drawer from the timeline", () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole("button", { name: "Выбрать 25 августа" })[0]);
@@ -62,6 +47,9 @@ describe("Dashboard v2", () => {
     expect(within(dialog).getByRole("heading", { name: /Питание/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Сон/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Тренировки/i })).toBeInTheDocument();
+    expect(within(dialog).getByText("Б ↑ выраженный вклад белка")).toBeInTheDocument();
+    expect(document.querySelectorAll(".protein-highlight").length).toBeGreaterThan(0);
+    expect(document.querySelectorAll(".fat-highlight").length).toBeGreaterThan(0);
     fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть детали дня" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

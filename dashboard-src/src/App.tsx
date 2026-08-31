@@ -34,6 +34,7 @@ import {
 import {
   energyProfile,
   macroProfile,
+  mealMacroHighlight,
   sleepSummary,
   trainingSummary,
   type EnergyBand,
@@ -44,12 +45,6 @@ import {
 } from "./dashboardModel";
 import { PRESENTATION_RULES } from "./presentationRules";
 import { snapshot } from "./snapshot";
-import {
-  DASHBOARD_VARIANTS,
-  DEFAULT_DASHBOARD_VARIANT,
-  type DashboardVariant,
-  type DashboardVariantId,
-} from "./variants";
 import type { DiaryDay, Metric, PeriodKey } from "./types";
 
 const PERIODS: Array<{ key: PeriodKey; label: string }> = [
@@ -78,6 +73,18 @@ const ENERGY_BAND_LABELS: Record<EnergyBand, string> = {
   above: "выше личного диапазона",
   unclassified: "нет классификации",
 };
+
+const CHART_PALETTE = {
+  ink: "#17231e",
+  muted: "#66736c",
+  grid: "#dce4df",
+  green: "#17785b",
+  blue: "#326f9d",
+  violet: "#7462a4",
+  amber: "#aa701e",
+  red: "#b64e45",
+  surface: "#ffffff",
+} as const;
 
 function metricValue(metric: Metric, digits = 0): string {
   return metric.valueStatus === "missing" ? "—" : formatNumber(metric.value, digits);
@@ -177,12 +184,24 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
             <h3><CircleAlert size={18} /> Что не заполнено</h3><ul>{day.completeness.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           </section> : null}
           <section className="drawer-section"><h3><Utensils size={18} /> Питание <span>{meals.length} событий</span></h3>
-            {meals.length ? <div className="meal-list">{meals.map((meal) => <article className="meal-card" key={meal.id}>
-              <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong>{formatNumber(meal.energy.value)} ккал</strong></div>
-              <div className="meal-macros"><span>Б {formatNumber(meal.protein.value, 1)}</span><span>Ж {formatNumber(meal.fat.value, 1)}</span><span>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span></div>
-              <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>
-              {meal.components.length ? <ul className="component-list">{meal.components.map((component) => <li key={component.id}><span>{component.name}<small>{component.linked ? component.profileName ?? "есть профиль" : "без профиля микронутриентов"}</small></span><strong>{formatNumber(component.weightG)} г</strong></li>)}</ul> : <p className="empty-inline">Компоненты не реконструированы</p>}
-            </article>)}</div> : <p className="empty-state">Питание за этот день не записано.</p>}
+            <div className="macro-highlight-legend" aria-label="Правила подсветки БЖУ блюда">
+              <span className="protein-key">Б ↑ выраженный вклад белка</span>
+              <span className="fat-key">Ж ! высокая доля жиров</span>
+              <small>от {PRESENTATION_RULES.mealHighlights.proteinEnergyShareAtOrAbovePercent}% и {PRESENTATION_RULES.mealHighlights.fatEnergyShareAtOrAbovePercent}% энергии БЖУ соответственно</small>
+            </div>
+            {meals.length ? <div className="meal-list">{meals.map((meal) => {
+              const highlight = mealMacroHighlight(meal);
+              return <article className="meal-card" key={meal.id}>
+                <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong>{formatNumber(meal.energy.value)} ккал</strong></div>
+                <div className="meal-macros">
+                  <span className={highlight.highProtein ? "protein-highlight" : ""} title={highlight.proteinEnergyShare === null ? undefined : `Белок: ${formatNumber(highlight.proteinEnergyShare)}% энергии БЖУ`}>Б {formatNumber(meal.protein.value, 1)}{highlight.highProtein ? <b aria-label="выраженный вклад белка">↑</b> : null}</span>
+                  <span className={highlight.highFat ? "fat-highlight" : ""} title={highlight.fatEnergyShare === null ? undefined : `Жиры: ${formatNumber(highlight.fatEnergyShare)}% энергии БЖУ`}>Ж {formatNumber(meal.fat.value, 1)}{highlight.highFat ? <b aria-label="высокая доля жиров">!</b> : null}</span>
+                  <span>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
+                </div>
+                <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>
+                {meal.components.length ? <ul className="component-list">{meal.components.map((component) => <li key={component.id}><span>{component.name}<small>{component.linked ? component.profileName ?? "есть профиль" : "без профиля микронутриентов"}</small></span><strong>{formatNumber(component.weightG)} г</strong></li>)}</ul> : <p className="empty-inline">Компоненты не реконструированы</p>}
+              </article>;
+            })}</div> : <p className="empty-state">Питание за этот день не записано.</p>}
           </section>
           <section className="drawer-section two-columns"><div><h3><MoonStar size={18} /> Сон</h3>
             {sleep ? <dl className="fact-list"><div><dt>Длительность</dt><dd>{formatNumber((sleep.durationMinutes ?? 0) / 60, 1)} ч</dd></div><div><dt>Интервал</dt><dd>{sleep.startedAt ?? "—"} — {sleep.endedAt ?? "—"}</dd></div><div><dt>Качество</dt><dd>{sleep.quality ?? "—"}</dd></div></dl> : <p className="empty-inline">Нет записи</p>}
@@ -201,20 +220,8 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
   </Dialog.Root>;
 }
 
-function CalendarStrip({ days, profile, openDay }: { days: DiaryDay[]; profile: EnergyProfile; openDay: (date: string) => void }) {
-  return <section className="calendar-strip" aria-labelledby="calendar-strip-title">
-    <div className="calendar-strip-heading"><div><span className="eyebrow">Лента периода</span><h2 id="calendar-strip-title">Каждый день — одна ячейка</h2></div><div className="energy-band-legend"><span className="below">↓ ниже</span><span className="typical">• около среднего</span><span className="above">↑ выше</span></div></div>
-    <div className="calendar-cells">{days.map((day) => {
-      const band = profile.bands.get(day.date) ?? "unclassified";
-      return <button key={day.date} className={`calendar-cell ${band} ${day.status}`} onClick={() => openDay(day.date)} aria-label={`${fullDate(day.date)}: ${metricValue(day.energy)} ккал, ${ENERGY_BAND_LABELS[band]}`}>
-        <span>{shortDate(day.date)}</span><strong>{day.energy.value === null ? "—" : formatNumber(day.energy.value)}</strong><small>{day.sleepMinutes.value === null ? "сон —" : `${formatNumber(day.sleepMinutes.value / 60, 1)} ч`} · {day.workoutMinutes.value === null ? "нагрузка —" : `${formatNumber(day.workoutMinutes.value)} мин`}</small>
-      </button>;
-    })}</div>
-  </section>;
-}
-
-function EnergyPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; profile: EnergyProfile; variant: DashboardVariant; openDay: (date: string) => void }) {
-  const palette = variant.chart;
+function EnergyPanel({ days, profile, openDay }: { days: DiaryDay[]; profile: EnergyProfile; openDay: (date: string) => void }) {
+  const palette = CHART_PALETTE;
   const colors: Record<EnergyBand, string> = { below: palette.green, typical: palette.blue, above: palette.red, unclassified: palette.grid };
   const option = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 300,
@@ -224,13 +231,13 @@ function EnergyPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; pr
     xAxis: { type: "category", data: days.map((day) => day.date), axisLabel: { formatter: (value: string) => shortDate(value), color: palette.muted, rotate: days.length > 14 ? 38 : 0 }, axisTick: { show: false }, axisLine: { lineStyle: { color: palette.grid } } },
     yAxis: { type: "value", name: "ккал", nameTextStyle: { color: palette.muted }, axisLabel: { color: palette.muted }, splitLine: { lineStyle: { color: palette.grid } } },
     series: [{
-      name: "Энергия", type: "bar", barMaxWidth: variant.id === 5 ? 22 : 34,
+      name: "Энергия", type: "bar", barMaxWidth: 34,
       data: days.map((day) => ({ value: day.energy.value, itemStyle: { color: colors[profile.bands.get(day.date) ?? "unclassified"], borderRadius: [4, 4, 0, 0] } })),
       label: { show: true, position: "top", color: palette.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value)) },
       labelLayout: { hideOverlap: true },
       markLine: averageMarkLine(profile.average, "Среднее", palette.amber),
     }],
-  }), [days, profile, variant, palette, colors]);
+  }), [days, profile, palette, colors]);
 
   return <section id="timeline" className="panel span-12 energy-panel">
     <SectionHeading kicker="Динамика" title="Энергия по дням" description={`Цвет сравнивает день только с личным средним выбранного периода. Диапазон «около среднего» — ±${PRESENTATION_RULES.energy.relativeBandPercent}%; это не норма и не цель.`} aside={<span className="interaction-hint"><TrendingUp size={16} /> среднее по {profile.n} дням</span>} />
@@ -244,8 +251,8 @@ function EnergyPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; pr
   </section>;
 }
 
-function MacroPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; profile: MacroProfile; variant: DashboardVariant; openDay: (date: string) => void }) {
-  const palette = variant.chart;
+function MacroPanel({ days, profile, openDay }: { days: DiaryDay[]; profile: MacroProfile; openDay: (date: string) => void }) {
+  const palette = CHART_PALETTE;
   const macroSpecs = [
     { key: "protein" as const, label: "Белки", color: palette.green, selector: (day: DiaryDay) => day.protein.value },
     { key: "fat" as const, label: "Жиры", color: palette.amber, selector: (day: DiaryDay) => day.fat.value },
@@ -269,30 +276,14 @@ function MacroPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; pro
       data: [{ name: "Белки", value: profile.totals.proteinKcal }, { name: "Жиры", value: profile.totals.fatKcal }, { name: "Углеводы", value: profile.totals.carbsKcal }],
     }],
   }), [profile, palette]);
-  const stackedOption = useMemo<EChartsCoreOption>(() => ({
-    animationDuration: 250,
-    aria: { enabled: true, decal: { show: true }, description: "Процентная структура белков, жиров и углеводов по дням" },
-    color: [palette.green, palette.amber, palette.blue],
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (value: unknown) => `${formatNumber(Number(value), 1)}%` },
-    legend: { top: 0, textStyle: { color: palette.muted }, itemWidth: 10, itemHeight: 10 },
-    grid: { left: 42, right: 14, top: 36, bottom: 46 },
-    xAxis: { type: "category", data: profile.days.map((day) => day.date), axisLabel: { formatter: (value: string) => shortDate(value), rotate: profile.days.length > 14 ? 38 : 0, color: palette.muted }, axisLine: { lineStyle: { color: palette.grid } } },
-    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%", color: palette.muted }, splitLine: { lineStyle: { color: palette.grid } } },
-    series: [
-      { name: "Белки", type: "bar", stack: "share", data: profile.days.map((day) => day.proteinShare) },
-      { name: "Жиры", type: "bar", stack: "share", data: profile.days.map((day) => day.fatShare) },
-      { name: "Углеводы", type: "bar", stack: "share", data: profile.days.map((day) => day.carbsShare), itemStyle: { borderRadius: [3, 3, 0, 0] } },
-    ],
-  }), [profile, palette]);
-
   return <section id="nutrition" className="panel span-12 nutrition-panel">
-    <SectionHeading kicker="Питание" title={variant.feature === "macro-bento" ? "Структура БЖУ — главный экран" : "Макронутриенты без пересечения линий"} description="Доли рассчитаны по энергии 4/9/4 для завершённых дней. Это описание рациона, а не персональная цель." aside={<span className="interaction-hint"><ChartPie size={16} /> {profile.days.length}/{days.length} дней</span>} />
-    <div className={`macro-layout ${variant.feature === "macro-bento" ? "bento" : ""}`}>
+    <SectionHeading kicker="Питание" title="Макронутриенты без пересечения линий" description="Доли рассчитаны по энергии 4/9/4 для завершённых дней. Это описание рациона, а не персональная цель." aside={<span className="interaction-hint"><ChartPie size={16} /> {profile.days.length}/{days.length} дней</span>} />
+    <div className="macro-layout">
       <div className="macro-donut-card"><h3>Структура БЖУ за период</h3><Chart option={donutOption} className="chart chart-donut" />
         <div className="macro-share-summary">{profile.shares ? <><span><i className="protein" />Б {formatNumber(profile.shares.protein, 1)}%</span><span><i className="fat" />Ж {formatNumber(profile.shares.fat, 1)}%</span><span><i className="carbs" />У {formatNumber(profile.shares.carbs, 1)}%</span></> : <span>Недостаточно данных</span>}</div>
       </div>
       <div className="macro-trends">
-        {variant.feature === "macro-bento" ? <Chart option={stackedOption} className="chart chart-macro-stacked" onDateSelect={openDay} /> : <div className="macro-series-grid">{macroSpecs.map((spec) => {
+        <div className="macro-series-grid">{macroSpecs.map((spec) => {
           const option: EChartsCoreOption = {
             animationDuration: 250, aria: { enabled: true, description: `${spec.label} по дням и среднее` },
             tooltip: { trigger: "axis", valueFormatter: (value: unknown) => `${formatNumber(Number(value), 1)} г` },
@@ -302,7 +293,7 @@ function MacroPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; pro
             series: [{ name: spec.label, type: "line", data: days.map(spec.selector), connectNulls: false, symbolSize: 6, lineStyle: { color: spec.color, width: 2 }, itemStyle: { color: spec.color }, label: { show: true, position: "top", color: palette.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value), 0) }, labelLayout: { hideOverlap: true }, markLine: averageMarkLine(macroAverages[spec.key], "Среднее", spec.color) }],
           };
           return <article className="macro-series-card" key={spec.key}><h3>{spec.label}</h3><Chart option={option} className="chart chart-macro-row" onDateSelect={openDay} /></article>;
-        })}</div>}
+        })}</div>
       </div>
     </div>
     <div className="stable-days"><div><strong>Стабильная структура</strong><span>БЖУ близки к личной медиане периода (±{PRESENTATION_RULES.macros.shareTolerancePercentagePoints} п.п.) и сходятся с калориями по 4/9/4.</span></div><div className="stable-day-list">{profile.days.map((day) => <span key={day.date} className={profile.stableDates.has(day.date) ? "stable" : ""} title={`${shortDate(day.date)}: ${profile.stableDates.has(day.date) ? "стабильная структура" : "вне правила"}`}>{profile.stableDates.has(day.date) ? <Check size={13} /> : "·"}<small>{shortDate(day.date)}</small></span>)}</div></div>
@@ -310,16 +301,16 @@ function MacroPanel({ days, profile, variant, openDay }: { days: DiaryDay[]; pro
   </section>;
 }
 
-function RecoveryPanel({ days, sleep, training, variant, openDay }: { days: DiaryDay[]; sleep: SleepSummary; training: TrainingSummary; variant: DashboardVariant; openDay: (date: string) => void }) {
-  const palette = variant.chart;
+function RecoveryPanel({ days, sleep, training, openDay }: { days: DiaryDay[]; sleep: SleepSummary; training: TrainingSummary; openDay: (date: string) => void }) {
+  const palette = CHART_PALETTE;
   const sleepOption = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 250, aria: { enabled: true, description: "Продолжительность сна по дням с линией среднего" },
     tooltip: { trigger: "axis", valueFormatter: (value: unknown) => `${formatNumber(Number(value), 1)} ч` },
     grid: { left: 42, right: 14, top: 34, bottom: 42 },
     xAxis: { type: "category", data: days.map((day) => day.date), axisLabel: { formatter: (value: string) => shortDate(value), rotate: days.length > 14 ? 38 : 0, color: palette.muted }, axisLine: { lineStyle: { color: palette.grid } } },
     yAxis: { type: "value", name: "ч", nameTextStyle: { color: palette.muted }, axisLabel: { color: palette.muted }, splitLine: { lineStyle: { color: palette.grid } } },
-    series: [{ name: "Сон", type: "line", data: days.map((day) => day.sleepMinutes.value === null ? null : day.sleepMinutes.value / 60), connectNulls: false, symbolSize: 7, lineStyle: { width: 2.5, color: palette.violet }, itemStyle: { color: palette.violet }, areaStyle: variant.feature === "recovery-report" ? { color: `${palette.violet}20` } : undefined, label: { show: true, position: "top", color: palette.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value), 1) }, labelLayout: { hideOverlap: true }, markLine: averageMarkLine(sleep.averageMinutes === null ? null : sleep.averageMinutes / 60, "Среднее", palette.violet) }],
-  }), [days, sleep, palette, variant]);
+    series: [{ name: "Сон", type: "line", data: days.map((day) => day.sleepMinutes.value === null ? null : day.sleepMinutes.value / 60), connectNulls: false, symbolSize: 7, lineStyle: { width: 2.5, color: palette.violet }, itemStyle: { color: palette.violet }, label: { show: true, position: "top", color: palette.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value), 1) }, labelLayout: { hideOverlap: true }, markLine: averageMarkLine(sleep.averageMinutes === null ? null : sleep.averageMinutes / 60, "Среднее", palette.violet) }],
+  }), [days, sleep, palette]);
   const workoutAverage = training.activeDays ? training.minutes / training.activeDays : null;
   const workoutOption = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 250, aria: { enabled: true, description: "Записанная длительность тренировок по дням" },
@@ -341,7 +332,7 @@ function RecoveryPanel({ days, sleep, training, variant, openDay }: { days: Diar
   }), [days, ratingAverage, palette]);
 
   return <section id="recovery" className="panel span-12 recovery-panel">
-    <SectionHeading kicker="Восстановление и нагрузка" title={variant.feature === "recovery-report" ? "Сон задаёт ритм отчёта" : "Полезные показатели сна и тренировок"} description="Средние дополнены разбросом, регулярностью и знаменателями. Отсутствие тренировки в журнале не считается подтверждённым отдыхом." aside={<span className="interaction-hint"><Timer size={16} /> {sleep.n}/{days.length} ночей</span>} />
+    <SectionHeading kicker="Восстановление и нагрузка" title="Полезные показатели сна и тренировок" description="Средние дополнены разбросом, регулярностью и знаменателями. Отсутствие тренировки в журнале не считается подтверждённым отдыхом." aside={<span className="interaction-hint"><Timer size={16} /> {sleep.n}/{days.length} ночей</span>} />
     <div className="recovery-stat-grid">
       <div><span>Медиана сна</span><strong>{sleep.medianMinutes === null ? "—" : `${formatNumber(sleep.medianMinutes / 60, 1)} ч`}</strong><small>диапазон {sleep.minimumMinutes === null ? "—" : formatNumber(sleep.minimumMinutes / 60, 1)}–{sleep.maximumMinutes === null ? "—" : formatNumber(sleep.maximumMinutes / 60, 1)} ч</small></div>
       <div><span>Разброс сна</span><strong>{sleep.standardDeviationMinutes === null ? "—" : `± ${formatNumber(sleep.standardDeviationMinutes / 60, 1)} ч`}</strong><small>{sleep.consistentNights}/{sleep.n} ночей в пределах ±30 мин от медианы</small></div>
@@ -354,7 +345,7 @@ function RecoveryPanel({ days, sleep, training, variant, openDay }: { days: Diar
   </section>;
 }
 
-function NutrientPanel({ dates, allowedDates, variant }: { dates: string[]; allowedDates: Set<string>; variant: DashboardVariant }) {
+function NutrientPanel({ dates, allowedDates }: { dates: string[]; allowedDates: Set<string> }) {
   const definitions = snapshot.nutrientDefinitions;
   const [selected, setSelected] = useState(definitions[0]?.id ?? "fiber_g");
   const [rollingWindow, setRollingWindow] = useState<7 | 14>(7);
@@ -366,10 +357,10 @@ function NutrientPanel({ dates, allowedDates, variant }: { dates: string[]; allo
   const option = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 250, aria: { enabled: true, description: `Скользящее среднее: ${selectedDefinition?.label ?? selected}` }, tooltip: { trigger: "axis" },
     grid: { left: 48, right: 14, top: 32, bottom: 42 },
-    xAxis: { type: "category", data: dates, axisLabel: { formatter: (value: string) => shortDate(value), rotate: dates.length > 14 ? 38 : 0, color: variant.chart.muted }, axisLine: { lineStyle: { color: variant.chart.grid } } },
-    yAxis: { type: "value", name: selectedDefinition?.unit, nameTextStyle: { color: variant.chart.muted }, axisLabel: { color: variant.chart.muted }, splitLine: { lineStyle: { color: variant.chart.grid } } },
-    series: [{ type: "line", data: rolling.map((item) => item.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 2.5, color: variant.chart.green }, itemStyle: { color: variant.chart.green }, label: { show: true, position: "top", color: variant.chart.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value), Number(params.value) < 10 ? 1 : 0) }, labelLayout: { hideOverlap: true } }],
-  }), [dates, rolling, selected, selectedDefinition, variant]);
+    xAxis: { type: "category", data: dates, axisLabel: { formatter: (value: string) => shortDate(value), rotate: dates.length > 14 ? 38 : 0, color: CHART_PALETTE.muted }, axisLine: { lineStyle: { color: CHART_PALETTE.grid } } },
+    yAxis: { type: "value", name: selectedDefinition?.unit, nameTextStyle: { color: CHART_PALETTE.muted }, axisLabel: { color: CHART_PALETTE.muted }, splitLine: { lineStyle: { color: CHART_PALETTE.grid } } },
+    series: [{ type: "line", data: rolling.map((item) => item.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 2.5, color: CHART_PALETTE.green }, itemStyle: { color: CHART_PALETTE.green }, label: { show: true, position: "top", color: CHART_PALETTE.ink, fontSize: 9, formatter: (params: { value?: unknown }) => formatNumber(Number(params.value), Number(params.value) < 10 ? 1 : 0) }, labelLayout: { hideOverlap: true } }],
+  }), [dates, rolling, selected, selectedDefinition]);
   return <section id="nutrients" className="panel span-12 nutrient-panel">
     <SectionHeading kicker="Микронутриенты" title="Известный минимум с покрытием" description="В суммы входят только связанные компоненты. Низкое значение здесь не является диагнозом дефицита." aside={<span className="interaction-hint"><ShieldCheck size={16} /> профили {formatNumber(snapshot.quality.profileCoverage.mass?.percent)}% массы</span>} />
     <div className="nutrient-layout"><div className="nutrient-controls"><label>Нутриент<select value={selected} onChange={(event) => setSelected(event.target.value)}>{definitions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>Окно<select value={rollingWindow} onChange={(event) => setRollingWindow(Number(event.target.value) as 7 | 14)}><option value={7}>7 дней</option><option value={14}>14 дней</option></select></label></div>
@@ -379,7 +370,7 @@ function NutrientPanel({ dates, allowedDates, variant }: { dates: string[]; allo
   </section>;
 }
 
-function RecommendationPanel({ energy, macros, sleep, training, days, variant }: { energy: EnergyProfile; macros: MacroProfile; sleep: SleepSummary; training: TrainingSummary; days: DiaryDay[]; variant: DashboardVariant }) {
+function RecommendationPanel({ energy, macros, sleep, training, days }: { energy: EnergyProfile; macros: MacroProfile; sleep: SleepSummary; training: TrainingSummary; days: DiaryDay[] }) {
   const spread = sleep.standardDeviationMinutes === null ? null : sleep.standardDeviationMinutes / 60;
   const cards = [
     { icon: <Gauge size={18} />, title: "Энергия", fact: `${energy.counts.below} ниже · ${energy.counts.typical} около · ${energy.counts.above} выше личного диапазона`, action: "Чтобы цвет означал реальный дефицит или избыток, сначала зафиксируйте персональную цель." },
@@ -387,7 +378,7 @@ function RecommendationPanel({ energy, macros, sleep, training, days, variant }:
     { icon: <Dumbbell size={18} />, title: "Нагрузка", fact: `${training.sessions} сессий · ${formatNumber(training.minutes)} мин · RPE ${training.rpeN}/${training.sessions}`, action: training.sessions && training.rpeN < training.sessions ? "После тренировки добавляйте RPE: так нагрузка станет сопоставимой по ощущениям." : "Продолжайте записывать RPE вместе с длительностью." },
     { icon: <Apple size={18} />, title: "Структура питания", fact: `${macros.stableDates.size}/${macros.days.length} дней близки к личной структуре периода`, action: "Это показатель стабильности, а не оценка качества; персональные диапазоны БЖУ зависят от цели." },
   ];
-  return <section id="summary" className={`panel span-12 recommendations ${variant.feature === "data-console" ? "console-summary" : ""}`}>
+  return <section id="summary" className="panel span-12 recommendations">
     <SectionHeading kicker="Саммари периода" title="Что видно и что улучшить следующим" description="Наблюдения описывают журнал и помогают сделать следующую запись полезнее; они не заменяют медицинскую оценку." />
     <div className="recommendation-grid">{cards.map((card) => <article key={card.title}><span className="recommendation-icon">{card.icon}</span><div><h3>{card.title}</h3><strong>{card.fact}</strong><p>{card.action}</p></div></article>)}</div>
   </section>;
@@ -401,8 +392,7 @@ function DailyTable({ days, openDay }: { days: DiaryDay[]; openDay: (date: strin
   </section>;
 }
 
-export function App({ variantOverride }: { variantOverride?: DashboardVariantId } = {}) {
-  const variant = DASHBOARD_VARIANTS[variantOverride ?? DEFAULT_DASHBOARD_VARIANT];
+export function App() {
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [completeOnly, setCompleteOnly] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -432,14 +422,14 @@ export function App({ variantOverride }: { variantOverride?: DashboardVariantId 
   const latestLabel = snapshot.meta.latestSourceDate ? fullDate(snapshot.meta.latestSourceDate) : "—";
   const periodLabel = window.from && window.to ? `${shortDate(window.from)} — ${shortDate(window.to)}` : "период не выбран";
 
-  const timeline = <EnergyPanel key="energy" days={visibleDays} profile={energyStats} variant={variant} openDay={setSelectedDate} />;
-  const nutrition = <MacroPanel key="macros" days={visibleDays} profile={macroStats} variant={variant} openDay={setSelectedDate} />;
-  const recovery = <RecoveryPanel key="recovery" days={visibleDays} sleep={sleepStats} training={trainingStats} variant={variant} openDay={setSelectedDate} />;
-  const recommendations = <RecommendationPanel key="summary" energy={energyStats} macros={macroStats} sleep={sleepStats} training={trainingStats} days={visibleDays} variant={variant} />;
-  const nutrients = <NutrientPanel key="nutrients" dates={window.dates} allowedDates={includedDateSet} variant={variant} />;
+  const timeline = <EnergyPanel key="energy" days={visibleDays} profile={energyStats} openDay={setSelectedDate} />;
+  const nutrition = <MacroPanel key="macros" days={visibleDays} profile={macroStats} openDay={setSelectedDate} />;
+  const recovery = <RecoveryPanel key="recovery" days={visibleDays} sleep={sleepStats} training={trainingStats} openDay={setSelectedDate} />;
+  const recommendations = <RecommendationPanel key="summary" energy={energyStats} macros={macroStats} sleep={sleepStats} training={trainingStats} days={visibleDays} />;
+  const nutrients = <NutrientPanel key="nutrients" dates={window.dates} allowedDates={includedDateSet} />;
   const dailyTable = <DailyTable key="days" days={chartDays} openDay={setSelectedDate} />;
 
-  return <div className={`app-shell variant-${variant.id}`}>
+  return <div className="app-shell">
     <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
     <aside className="sidebar">
       <div className="brand-mark"><HeartPulse size={23} /><span>Health Diary</span></div>
@@ -449,13 +439,11 @@ export function App({ variantOverride }: { variantOverride?: DashboardVariantId 
 
     <main id="main-content">
       <header className="utility-header">
-        <div className="dashboard-title"><span className="variant-code">{variant.code}</span><div><h1>Дневник здоровья</h1><p>{variant.name} · {variant.descriptor}</p></div></div>
+        <div className="dashboard-title"><span className="analytics-badge">Аналитика</span><div><h1>Дневник здоровья</h1><p>Питание, сон и тренировочная нагрузка</p></div></div>
         <dl className="snapshot-meta"><div><dt>Период</dt><dd>{periodLabel}</dd></div><div><dt>Данные по</dt><dd>{latestLabel}</dd></div><div><dt>Версия расчёта</dt><dd>{snapshot.meta.calculationVersion}</dd></div></dl>
       </header>
 
       <div className="control-bar" aria-label="Фильтры периода"><div className="period-tabs" role="group" aria-label="Период">{PERIODS.map((item) => <button key={item.key} className={period === item.key ? "active" : ""} aria-pressed={period === item.key} onClick={() => setPeriod(item.key)}>{item.label}</button>)}</div><label className="switch"><input type="checkbox" checked={completeOnly} onChange={(event) => setCompleteOnly(event.target.checked)} /><span aria-hidden="true" /><b>Только завершённые</b></label><div className="period-meta"><CalendarDays size={16} /> {window.completeDays}/{window.dates.length} завершено</div></div>
-
-      {variant.feature === "night-lab" ? <CalendarStrip days={visibleDays} profile={energyStats} openDay={setSelectedDate} /> : null}
 
       <section id="overview" className="overview-section"><SectionHeading kicker="Обзор периода" title="Средние и диапазоны" description={`${window.completeDays}/${window.dates.length} завершённых дней. Каждый показатель сохраняет собственный знаменатель.`} aside={<StateLegend />} />
         <div className="kpi-grid">
@@ -469,16 +457,12 @@ export function App({ variantOverride }: { variantOverride?: DashboardVariantId 
       </section>
 
       <div className="dashboard-grid">
-        {variant.feature === "data-console" ? recommendations : null}
-        {variant.feature === "macro-bento" ? nutrition : null}
-        {variant.feature === "recovery-report" ? recovery : null}
         {timeline}
-        {variant.feature !== "macro-bento" ? nutrition : null}
-        {variant.feature !== "recovery-report" ? recovery : null}
-        {variant.feature === "data-console" ? dailyTable : null}
+        {nutrition}
+        {recovery}
         {nutrients}
-        {variant.feature !== "data-console" ? recommendations : null}
-        {variant.feature !== "data-console" ? dailyTable : null}
+        {recommendations}
+        {dailyTable}
       </div>
 
       <footer className="page-footer"><span><ShieldCheck size={15} /> Приватный статический снимок · без CDN, API и телеметрии</span><span>Контракт {snapshot.meta.contractVersion} · UI-правила {PRESENTATION_RULES.version} · источник {snapshot.meta.sourceHash.slice(0, 8)}</span></footer>

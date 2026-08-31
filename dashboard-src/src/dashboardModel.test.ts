@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { energyProfile, macroProfile, sleepSummary, trainingSummary } from "./dashboardModel";
+import { energyProfile, macroProfile, mealMacroHighlight, sleepSummary, trainingSummary } from "./dashboardModel";
 import { snapshot } from "./snapshot";
 
 describe("dashboard presentation model", () => {
@@ -44,5 +44,14 @@ describe("dashboard presentation model", () => {
     expect(result.distanceKm).toBeCloseTo(43.87, 2);
     expect(result.rpeN).toBe(0);
     expect(result.heartRateN).toBe(1);
+  });
+
+  it("highlights protein and fat from their shares of macro energy", () => {
+    const chicken = snapshot.meals.find((meal) => meal.title === "Куриная грудка на пару");
+    const coleslaw = snapshot.meals.find((meal) => meal.title === "Салат коул-слоу");
+    expect(chicken).toBeDefined();
+    expect(coleslaw).toBeDefined();
+    expect(mealMacroHighlight(chicken as NonNullable<typeof chicken>)).toMatchObject({ highProtein: true, highFat: false });
+    expect(mealMacroHighlight(coleslaw as NonNullable<typeof coleslaw>)).toMatchObject({ highProtein: false, highFat: true });
   });
 });

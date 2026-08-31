@@ -1,7 +1,37 @@
 import { PRESENTATION_RULES } from "./presentationRules";
-import type { DiaryDay, WorkoutEvent } from "./types";
+import type { DiaryDay, MealEvent, WorkoutEvent } from "./types";
 
 export type EnergyBand = "below" | "typical" | "above" | "unclassified";
+
+export interface MealMacroHighlight {
+  proteinEnergyShare: number | null;
+  fatEnergyShare: number | null;
+  highProtein: boolean;
+  highFat: boolean;
+}
+
+export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "carbs">): MealMacroHighlight {
+  const protein = meal.protein.value;
+  const fat = meal.fat.value;
+  const carbs = meal.carbs.value;
+  if (protein === null || fat === null || carbs === null) {
+    return { proteinEnergyShare: null, fatEnergyShare: null, highProtein: false, highFat: false };
+  }
+  const proteinKcal = protein * 4;
+  const fatKcal = fat * 9;
+  const macroEnergy = proteinKcal + fatKcal + carbs * 4;
+  if (macroEnergy <= 0) {
+    return { proteinEnergyShare: null, fatEnergyShare: null, highProtein: false, highFat: false };
+  }
+  const proteinEnergyShare = proteinKcal / macroEnergy * 100;
+  const fatEnergyShare = fatKcal / macroEnergy * 100;
+  return {
+    proteinEnergyShare,
+    fatEnergyShare,
+    highProtein: proteinEnergyShare >= PRESENTATION_RULES.mealHighlights.proteinEnergyShareAtOrAbovePercent,
+    highFat: fatEnergyShare >= PRESENTATION_RULES.mealHighlights.fatEnergyShareAtOrAbovePercent,
+  };
+}
 
 function mean(values: number[]): number | null {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
