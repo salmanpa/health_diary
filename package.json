@@ -5,7 +5,7 @@
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dashboard:dev": "vite --config dashboard-src/vite.config.ts",
-    "dashboard:build": "tsc -p dashboard-src/tsconfig.json --noEmit && vite build --config dashboard-src/vite.config.ts",
+    "dashboard:build": "tsc -p dashboard-src/tsconfig.json --noEmit && sh scripts/build_dashboard_variants.sh",
     "dashboard:preview": "vite preview --config dashboard-src/vite.config.ts",
     "test": "python3 -m unittest discover -s tests -p 'test_*.py' && vitest run --config dashboard-src/vitest.config.ts"
   },

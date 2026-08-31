@@ -24,5 +24,13 @@ run_pnpm() {
 
 cd "$project_dir"
 run_pnpm run dashboard:build
-perl -pi -e 's/[ \t]+$//' "$project_dir/dashboard/index.html"
-echo "Dashboard UI is ready: $project_dir/dashboard/index.html"
+for dashboard_file in \
+    index.html \
+    02-night-lab.html \
+    03-macro-bento.html \
+    04-recovery-report.html \
+    05-data-console.html
+do
+    perl -pi -e 's/[ \t]+$//' "$project_dir/dashboard/$dashboard_file"
+done
+echo "Five dashboard UI variants are ready in: $project_dir/dashboard"

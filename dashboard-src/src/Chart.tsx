@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
+import { BarChart, HeatmapChart, LineChart, PieChart } from "echarts/charts";
 import {
   AriaComponent,
   DataZoomComponent,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TooltipComponent,
   VisualMapComponent,
 } from "echarts/components";
@@ -13,8 +14,8 @@ import { SVGRenderer } from "echarts/renderers";
 import type { EChartsCoreOption } from "echarts/core";
 
 echarts.use([
-  LineChart, BarChart, HeatmapChart, GridComponent, TooltipComponent,
-  LegendComponent, DataZoomComponent, VisualMapComponent, AriaComponent, SVGRenderer,
+  LineChart, BarChart, HeatmapChart, PieChart, GridComponent, TooltipComponent,
+  LegendComponent, MarkLineComponent, DataZoomComponent, VisualMapComponent, AriaComponent, SVGRenderer,
 ]);
 
 interface ChartProps {
