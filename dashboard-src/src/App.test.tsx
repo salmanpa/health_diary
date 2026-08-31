@@ -47,13 +47,14 @@ describe("Dashboard v2", () => {
     expect(within(dialog).getByRole("heading", { name: /Питание/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Сон/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: /Тренировки/i })).toBeInTheDocument();
-    expect(within(dialog).getByText("Б ↑ белка больше, чем жиров и углеводов")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Правила подсветки БЖУ блюда")).not.toBeInTheDocument();
     expect(document.querySelectorAll(".protein-highlight").length).toBeGreaterThan(0);
-    expect(document.querySelectorAll(".fat-highlight")).toHaveLength(0);
+    expect(document.querySelectorAll(".fat-highlight").length).toBeGreaterThan(0);
+    expect(document.querySelectorAll(".carbs-highlight").length).toBeGreaterThan(0);
     fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть детали дня" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Открыть детали пятница, 28 августа" })[0]);
-    expect(document.querySelectorAll(".fat-highlight").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "Открыть детали четверг, 27 августа" })[0]);
+    expect(document.querySelectorAll(".energy-highlight").length).toBeGreaterThan(0);
   });
 });

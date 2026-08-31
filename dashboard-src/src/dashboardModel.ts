@@ -6,21 +6,27 @@ export type EnergyBand = "below" | "typical" | "above" | "unclassified";
 export interface MealMacroHighlight {
   highProtein: boolean;
   highFat: boolean;
+  highCarbs: boolean;
+  highEnergy: boolean;
 }
 
-export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "carbs">): MealMacroHighlight {
+export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "carbs" | "energy">): MealMacroHighlight {
   const protein = meal.protein.value;
   const fat = meal.fat.value;
   const carbs = meal.carbs.value;
-  if (protein === null || fat === null || carbs === null) {
-    return { highProtein: false, highFat: false };
-  }
   const rules = PRESENTATION_RULES.mealHighlights;
+  const macrosKnown = protein !== null && fat !== null && carbs !== null;
   return {
-    highProtein: protein > fat * rules.proteinToOtherMacroRatioExclusive
+    highProtein: macrosKnown
+      && protein > fat * rules.proteinToOtherMacroRatioExclusive
       && protein > carbs * rules.proteinToOtherMacroRatioExclusive,
-    highFat: fat > rules.fatMinimumGramsExclusive
-      && fat > protein * rules.fatToProteinRatioExclusive,
+    highFat: macrosKnown
+      && fat > protein * rules.fatToOtherMacroRatioExclusive
+      && fat > carbs * rules.fatToOtherMacroRatioExclusive,
+    highCarbs: macrosKnown
+      && carbs > protein * rules.carbsToOtherMacroRatioExclusive
+      && carbs > fat * rules.carbsToOtherMacroRatioExclusive,
+    highEnergy: meal.energy.value !== null && meal.energy.value > rules.energyKcalExclusive,
   };
 }
 

@@ -184,19 +184,14 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
             <h3><CircleAlert size={18} /> Что не заполнено</h3><ul>{day.completeness.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           </section> : null}
           <section className="drawer-section"><h3><Utensils size={18} /> Питание <span>{meals.length} событий</span></h3>
-            <div className="macro-highlight-legend" aria-label="Правила подсветки БЖУ блюда">
-              <span className="protein-key">Б ↑ белка больше, чем жиров и углеводов</span>
-              <span className="fat-key">Ж ! жиров больше {PRESENTATION_RULES.mealHighlights.fatMinimumGramsExclusive} г и более чем в {formatNumber(PRESENTATION_RULES.mealHighlights.fatToProteinRatioExclusive, 1)} раза больше белка</span>
-              <small>Подсветка сравнивает макронутриенты внутри каждого блюда.</small>
-            </div>
             {meals.length ? <div className="meal-list">{meals.map((meal) => {
               const highlight = mealMacroHighlight(meal);
               return <article className="meal-card" key={meal.id}>
-                <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong>{formatNumber(meal.energy.value)} ккал</strong></div>
+                <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong className={highlight.highEnergy ? "energy-highlight" : undefined}>{formatNumber(meal.energy.value)} ккал</strong></div>
                 <div className="meal-macros">
-                  <span className={highlight.highProtein ? "protein-highlight" : ""} title={highlight.highProtein ? "Белка больше, чем жиров и углеводов" : undefined}>Б {formatNumber(meal.protein.value, 1)}{highlight.highProtein ? <b aria-label="белка больше, чем жиров и углеводов">↑</b> : null}</span>
-                  <span className={highlight.highFat ? "fat-highlight" : ""} title={highlight.highFat ? `Жиров больше ${PRESENTATION_RULES.mealHighlights.fatMinimumGramsExclusive} г и более чем в ${formatNumber(PRESENTATION_RULES.mealHighlights.fatToProteinRatioExclusive, 1)} раза больше белка` : undefined}>Ж {formatNumber(meal.fat.value, 1)}{highlight.highFat ? <b aria-label="заметно больше жиров, чем белка">!</b> : null}</span>
-                  <span>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
+                  <span className={highlight.highProtein ? "protein-highlight" : ""}>Б {formatNumber(meal.protein.value, 1)}</span>
+                  <span className={highlight.highFat ? "fat-highlight" : ""}>Ж {formatNumber(meal.fat.value, 1)}</span>
+                  <span className={highlight.highCarbs ? "carbs-highlight" : ""}>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
                 </div>
                 <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>
                 {meal.components.length ? <ul className="component-list">{meal.components.map((component) => <li key={component.id}><span>{component.name}<small>{component.linked ? component.profileName ?? "есть профиль" : "без профиля микронутриентов"}</small></span><strong>{formatNumber(component.weightG)} г</strong></li>)}</ul> : <p className="empty-inline">Компоненты не реконструированы</p>}

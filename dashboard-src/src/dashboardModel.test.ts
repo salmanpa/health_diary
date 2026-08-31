@@ -46,24 +46,24 @@ describe("dashboard presentation model", () => {
     expect(result.heartRateN).toBe(1);
   });
 
-  it("highlights protein only when it exceeds both fat and carbohydrates", () => {
+  it("highlights protein when it exceeds both fat and carbohydrates", () => {
     const chicken = snapshot.meals.find((meal) => meal.title === "Куриная грудка на пару");
     expect(chicken).toBeDefined();
-    expect(mealMacroHighlight(chicken as NonNullable<typeof chicken>)).toMatchObject({ highProtein: true, highFat: false });
+    expect(mealMacroHighlight(chicken as NonNullable<typeof chicken>)).toMatchObject({ highProtein: true, highFat: false, highCarbs: false });
 
     const equalProteinAndFat = {
-      protein: { value: 20 }, fat: { value: 20 }, carbs: { value: 5 },
+      protein: { value: 20 }, fat: { value: 20 }, carbs: { value: 5 }, energy: { value: 300 },
     } as Parameters<typeof mealMacroHighlight>[0];
     expect(mealMacroHighlight(equalProteinAndFat).highProtein).toBe(false);
   });
 
-  it("highlights fat only above 30 g and above 1.5 times the protein", () => {
-    const macros = (protein: number, fat: number, carbs: number) => ({
-      protein: { value: protein }, fat: { value: fat }, carbs: { value: carbs },
+  it("highlights leading fat, strongly leading carbs, and energy above 800 kcal", () => {
+    const meal = (protein: number, fat: number, carbs: number, energy: number) => ({
+      protein: { value: protein }, fat: { value: fat }, carbs: { value: carbs }, energy: { value: energy },
     }) as Parameters<typeof mealMacroHighlight>[0];
 
-    expect(mealMacroHighlight(macros(20, 30, 5)).highFat).toBe(false);
-    expect(mealMacroHighlight(macros(25, 36, 5)).highFat).toBe(false);
-    expect(mealMacroHighlight(macros(20, 31, 5)).highFat).toBe(true);
+    expect(mealMacroHighlight(meal(20, 21, 5, 400))).toMatchObject({ highFat: true, highCarbs: false, highEnergy: false });
+    expect(mealMacroHighlight(meal(20, 10, 30, 800))).toMatchObject({ highCarbs: false, highEnergy: false });
+    expect(mealMacroHighlight(meal(20, 10, 31, 801))).toMatchObject({ highCarbs: true, highEnergy: true });
   });
 });

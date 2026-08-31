@@ -3,7 +3,7 @@
  * itself and are not calorie or macro targets.
  */
 export const PRESENTATION_RULES = {
-  version: "relative-signals-1.1",
+  version: "relative-signals-1.2",
   energy: {
     minimumDays: 7,
     relativeBandPercent: 15,
@@ -18,7 +18,8 @@ export const PRESENTATION_RULES = {
   },
   mealHighlights: {
     proteinToOtherMacroRatioExclusive: 1,
-    fatMinimumGramsExclusive: 30,
-    fatToProteinRatioExclusive: 1.5,
+    fatToOtherMacroRatioExclusive: 1,
+    carbsToOtherMacroRatioExclusive: 1.5,
+    energyKcalExclusive: 800,
   },
 } as const;
