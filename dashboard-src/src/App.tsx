@@ -288,17 +288,17 @@ function NutritionPanel({ days }: { days: DiaryDay[] }) {
   );
   const option = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 350,
-    aria: { enabled: true, decal: { show: true }, description: "Столбцы белков, жиров и углеводов по дням" },
-    color: [COLORS.protein, COLORS.fat, COLORS.carbs],
+    aria: { enabled: true, decal: { show: true }, description: "Линии белков, жиров и углеводов по дням" },
+    color: [COLORS.blue, "#e0774f", "#d2a83f"],
     tooltip: { trigger: "axis", valueFormatter: (value: unknown) => `${formatNumber(Number(value), 1)} г` },
     legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: COLORS.muted } },
     grid: { left: 38, right: 12, top: 38, bottom: 38 },
     xAxis: { type: "category", data: days.map((day) => day.date), axisLabel: { formatter: (value: string) => shortDate(value), color: COLORS.muted }, axisLine: { lineStyle: { color: COLORS.grid } } },
     yAxis: { type: "value", name: "г", nameTextStyle: { color: COLORS.muted }, axisLabel: { color: COLORS.muted }, splitLine: { lineStyle: { color: COLORS.grid } } },
     series: [
-      { name: "Белки", type: "bar", stack: "macro", data: days.map((day) => day.protein.value), barMaxWidth: 28 },
-      { name: "Жиры", type: "bar", stack: "macro", data: days.map((day) => day.fat.value), barMaxWidth: 28 },
-      { name: "Углеводы", type: "bar", stack: "macro", data: days.map((day) => day.carbs.value), barMaxWidth: 28 },
+      { name: "Белки", type: "line", data: days.map((day) => day.protein.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 2 } },
+      { name: "Жиры", type: "line", data: days.map((day) => day.fat.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 2 } },
+      { name: "Углеводы", type: "line", data: days.map((day) => day.carbs.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 2 } },
     ],
   }), [days]);
 
@@ -312,7 +312,7 @@ function NutritionPanel({ days }: { days: DiaryDay[] }) {
   }, {});
 
   return <section id="nutrition" className="panel span-7">
-    <SectionHeading eyebrow="Питание" title="Структура макронутриентов" description="Отдельные ряды сохраняют читаемость; нули не подставляются вместо пропусков." />
+    <SectionHeading eyebrow="Питание" title="Динамика макронутриентов" description="Линейный вид из предыдущей версии; разрывы по-прежнему означают отсутствие данных." />
     <Chart option={option} className="chart chart-medium" />
     <div className="meal-distribution" aria-label="Распределение по типам записей питания">
       {Object.entries(mealTypes).map(([type, item]) => <div key={type}>
@@ -462,32 +462,19 @@ export function App() {
   const workoutDistance = workouts.reduce((sum, item) => sum + (item.distanceKm ?? 0), 0);
   const fullEnough = window.completeDays >= snapshot.contract.trendGates.provisionalBelowDays;
 
-  const timelineOption = useMemo<EChartsCoreOption>(() => ({
+  const legacyChart = (unit: string, description: string, series: EChartsCoreOption["series"], dark = false): EChartsCoreOption => ({
     animationDuration: 350,
-    aria: { enabled: true, decal: { show: true }, description: "Общая временная шкала калорий, сна, тренировок и оценки дня" },
-    color: [COLORS.green, COLORS.blue, COLORS.amber, COLORS.violet],
+    aria: { enabled: true, decal: { show: true }, description },
     tooltip: { trigger: "axis", axisPointer: { type: "line" } },
-    axisPointer: { link: [{ xAxisIndex: "all" }] },
-    legend: { top: 0, left: 0, itemWidth: 12, itemHeight: 7, textStyle: { color: COLORS.muted } },
-    grid: [
-      { left: 45, right: 20, top: 42, height: 105 },
-      { left: 45, right: 20, top: 188, height: 74 },
-      { left: 45, right: 20, top: 303, height: 74 },
-    ],
-    xAxis: [0, 1, 2].map((gridIndex) => ({ type: "category", gridIndex, data: visibleChartDays.map((day) => day.date), axisLabel: { show: gridIndex === 2, formatter: (value: string) => shortDate(value), color: COLORS.muted, rotate: window.dates.length > 14 ? 35 : 0 }, axisTick: { show: false }, axisLine: { lineStyle: { color: COLORS.grid } }, axisPointer: { show: true } })),
-    yAxis: [
-      { type: "value", gridIndex: 0, name: "ккал", axisLabel: { color: COLORS.muted }, splitLine: { lineStyle: { color: COLORS.grid } } },
-      { type: "value", gridIndex: 1, name: "ч / мин", axisLabel: { color: COLORS.muted }, splitLine: { lineStyle: { color: COLORS.grid } } },
-      { type: "value", gridIndex: 2, name: "1–5", min: 1, max: 5, interval: 1, axisLabel: { color: COLORS.muted }, splitLine: { lineStyle: { color: COLORS.grid } } },
-    ],
-    dataZoom: [{ type: "inside", xAxisIndex: [0, 1, 2], filterMode: "none" }],
-    series: [
-      { name: "Энергия", type: "line", xAxisIndex: 0, yAxisIndex: 0, data: visibleChartDays.map((day) => day.energy.value), connectNulls: false, symbolSize: 7, lineStyle: { width: 3 } },
-      { name: "Сон, ч", type: "line", xAxisIndex: 1, yAxisIndex: 1, data: visibleChartDays.map((day) => day.sleepMinutes.value === null ? null : Number((day.sleepMinutes.value / 60).toFixed(1))), connectNulls: false, symbolSize: 6, lineStyle: { width: 2 } },
-      { name: "Тренировка, мин", type: "bar", xAxisIndex: 1, yAxisIndex: 1, data: visibleChartDays.map((day) => day.workoutMinutes.value), barMaxWidth: 16 },
-      { name: "Оценка", type: "line", xAxisIndex: 2, yAxisIndex: 2, data: visibleChartDays.map((day) => day.rating.value), connectNulls: false, symbolSize: 8, lineStyle: { width: 2 } },
-    ],
-  }), [visibleChartDays, window.dates.length]);
+    grid: { left: 48, right: 16, top: 18, bottom: 40 },
+    xAxis: { type: "category", data: visibleChartDays.map((day) => day.date), axisLabel: { formatter: (value: string) => shortDate(value), color: dark ? "rgba(251,252,248,.68)" : COLORS.muted, rotate: window.dates.length > 14 ? 35 : 0 }, axisTick: { show: false }, axisLine: { lineStyle: { color: dark ? "rgba(251,252,248,.2)" : COLORS.grid } } },
+    yAxis: { type: "value", name: unit, nameTextStyle: { color: dark ? "rgba(251,252,248,.68)" : COLORS.muted }, axisLabel: { color: dark ? "rgba(251,252,248,.68)" : COLORS.muted }, splitLine: { lineStyle: { color: dark ? "rgba(251,252,248,.15)" : COLORS.grid } } },
+    series,
+  });
+  const calorieOption = legacyChart("ккал", "Столбцы калорий по дням", [{ name: "Энергия", type: "bar", data: visibleChartDays.map((day) => day.energy.value), barMaxWidth: 34, itemStyle: { color: COLORS.green, borderRadius: [4, 4, 0, 0] } }]);
+  const sleepOption = legacyChart("ч", "Линия продолжительности сна по дням", [{ name: "Сон", type: "line", data: visibleChartDays.map((day) => day.sleepMinutes.value === null ? null : Number((day.sleepMinutes.value / 60).toFixed(1))), connectNulls: false, symbolSize: 7, lineStyle: { width: 3, color: "#bbf07b" }, itemStyle: { color: "#bbf07b" } }], true);
+  const activityOption = legacyChart("мин", "Столбцы продолжительности тренировок по дням", [{ name: "Тренировка", type: "bar", data: visibleChartDays.map((day) => day.workoutMinutes.value), barMaxWidth: 34, itemStyle: { color: COLORS.blue, borderRadius: [4, 4, 0, 0] } }]);
+  const ratingOption = legacyChart("1–5", "Линия пользовательской оценки дня", [{ name: "Оценка", type: "line", data: visibleChartDays.map((day) => day.rating.value), connectNulls: false, symbolSize: 8, lineStyle: { width: 2, color: COLORS.violet }, itemStyle: { color: COLORS.violet } }]);
 
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
@@ -544,8 +531,13 @@ export function App() {
 
       <div className="dashboard-grid">
         <section id="timeline" className="panel span-12 timeline-panel">
-          <SectionHeading eyebrow="Общая динамика" title="Связанные показатели по дням" description="Наведите или нажмите на точку, чтобы сопоставить еду, сон, нагрузку и оценку. Разрыв означает отсутствие данных." aside={<span className="interaction-hint"><Scale size={16} /> масштаб — жестом или колесом</span>} />
-          <Chart option={timelineOption} className="chart chart-timeline" onDateSelect={setSelectedDate} />
+          <SectionHeading eyebrow="Общая динамика" title="Графики в прежнем виде" description="Показатели снова разделены на четыре простых графика. Нажмите на столбец или точку для деталей; разрыв означает отсутствие данных." aside={<span className="interaction-hint"><Scale size={16} /> единая календарная ось</span>} />
+          <div className="legacy-chart-grid">
+            <article className="legacy-chart-card"><h3>Калории</h3><Chart option={calorieOption} className="chart chart-legacy" onDateSelect={setSelectedDate} /></article>
+            <article className="legacy-chart-card sleep"><h3>Сон</h3><Chart option={sleepOption} className="chart chart-legacy" onDateSelect={setSelectedDate} /></article>
+            <article className="legacy-chart-card"><h3>Тренировки</h3><Chart option={activityOption} className="chart chart-legacy" onDateSelect={setSelectedDate} /></article>
+            <article className="legacy-chart-card"><h3>Оценка дня</h3><Chart option={ratingOption} className="chart chart-legacy" onDateSelect={setSelectedDate} /></article>
+          </div>
           <ChartSummaryTable days={chartDays} openDay={setSelectedDate} />
         </section>
 
