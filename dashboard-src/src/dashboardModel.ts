@@ -4,8 +4,6 @@ import type { DiaryDay, MealEvent, WorkoutEvent } from "./types";
 export type EnergyBand = "below" | "typical" | "above" | "unclassified";
 
 export interface MealMacroHighlight {
-  proteinEnergyShare: number | null;
-  fatEnergyShare: number | null;
   highProtein: boolean;
   highFat: boolean;
 }
@@ -15,21 +13,14 @@ export function mealMacroHighlight(meal: Pick<MealEvent, "protein" | "fat" | "ca
   const fat = meal.fat.value;
   const carbs = meal.carbs.value;
   if (protein === null || fat === null || carbs === null) {
-    return { proteinEnergyShare: null, fatEnergyShare: null, highProtein: false, highFat: false };
+    return { highProtein: false, highFat: false };
   }
-  const proteinKcal = protein * 4;
-  const fatKcal = fat * 9;
-  const macroEnergy = proteinKcal + fatKcal + carbs * 4;
-  if (macroEnergy <= 0) {
-    return { proteinEnergyShare: null, fatEnergyShare: null, highProtein: false, highFat: false };
-  }
-  const proteinEnergyShare = proteinKcal / macroEnergy * 100;
-  const fatEnergyShare = fatKcal / macroEnergy * 100;
+  const rules = PRESENTATION_RULES.mealHighlights;
   return {
-    proteinEnergyShare,
-    fatEnergyShare,
-    highProtein: proteinEnergyShare >= PRESENTATION_RULES.mealHighlights.proteinEnergyShareAtOrAbovePercent,
-    highFat: fatEnergyShare >= PRESENTATION_RULES.mealHighlights.fatEnergyShareAtOrAbovePercent,
+    highProtein: protein > fat * rules.proteinToOtherMacroRatioExclusive
+      && protein > carbs * rules.proteinToOtherMacroRatioExclusive,
+    highFat: fat > rules.fatMinimumGramsExclusive
+      && fat > protein * rules.fatToProteinRatioExclusive,
   };
 }
 

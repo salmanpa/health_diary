@@ -185,17 +185,17 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
           </section> : null}
           <section className="drawer-section"><h3><Utensils size={18} /> Питание <span>{meals.length} событий</span></h3>
             <div className="macro-highlight-legend" aria-label="Правила подсветки БЖУ блюда">
-              <span className="protein-key">Б ↑ выраженный вклад белка</span>
-              <span className="fat-key">Ж ! высокая доля жиров</span>
-              <small>от {PRESENTATION_RULES.mealHighlights.proteinEnergyShareAtOrAbovePercent}% и {PRESENTATION_RULES.mealHighlights.fatEnergyShareAtOrAbovePercent}% энергии БЖУ соответственно</small>
+              <span className="protein-key">Б ↑ белка больше, чем жиров и углеводов</span>
+              <span className="fat-key">Ж ! жиров больше {PRESENTATION_RULES.mealHighlights.fatMinimumGramsExclusive} г и более чем в {formatNumber(PRESENTATION_RULES.mealHighlights.fatToProteinRatioExclusive, 1)} раза больше белка</span>
+              <small>Подсветка сравнивает макронутриенты внутри каждого блюда.</small>
             </div>
             {meals.length ? <div className="meal-list">{meals.map((meal) => {
               const highlight = mealMacroHighlight(meal);
               return <article className="meal-card" key={meal.id}>
                 <div className="meal-title"><div><span>{MEAL_LABELS[meal.mealType] ?? meal.mealType}{meal.eatenAt ? ` · ${meal.eatenAt}` : ""}</span><h4>{meal.title}</h4></div><strong>{formatNumber(meal.energy.value)} ккал</strong></div>
                 <div className="meal-macros">
-                  <span className={highlight.highProtein ? "protein-highlight" : ""} title={highlight.proteinEnergyShare === null ? undefined : `Белок: ${formatNumber(highlight.proteinEnergyShare)}% энергии БЖУ`}>Б {formatNumber(meal.protein.value, 1)}{highlight.highProtein ? <b aria-label="выраженный вклад белка">↑</b> : null}</span>
-                  <span className={highlight.highFat ? "fat-highlight" : ""} title={highlight.fatEnergyShare === null ? undefined : `Жиры: ${formatNumber(highlight.fatEnergyShare)}% энергии БЖУ`}>Ж {formatNumber(meal.fat.value, 1)}{highlight.highFat ? <b aria-label="высокая доля жиров">!</b> : null}</span>
+                  <span className={highlight.highProtein ? "protein-highlight" : ""} title={highlight.highProtein ? "Белка больше, чем жиров и углеводов" : undefined}>Б {formatNumber(meal.protein.value, 1)}{highlight.highProtein ? <b aria-label="белка больше, чем жиров и углеводов">↑</b> : null}</span>
+                  <span className={highlight.highFat ? "fat-highlight" : ""} title={highlight.highFat ? `Жиров больше ${PRESENTATION_RULES.mealHighlights.fatMinimumGramsExclusive} г и более чем в ${formatNumber(PRESENTATION_RULES.mealHighlights.fatToProteinRatioExclusive, 1)} раза больше белка` : undefined}>Ж {formatNumber(meal.fat.value, 1)}{highlight.highFat ? <b aria-label="заметно больше жиров, чем белка">!</b> : null}</span>
                   <span>У {formatNumber(meal.carbs.value, 1)}</span><span>{formatNumber(meal.weightG)} г</span>
                 </div>
                 <div className="source-row">{provenanceLabel(meal.provenance)} · уверенность {confidenceLabel(meal.confidence)}</div>

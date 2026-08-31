@@ -46,12 +46,24 @@ describe("dashboard presentation model", () => {
     expect(result.heartRateN).toBe(1);
   });
 
-  it("highlights protein and fat from their shares of macro energy", () => {
+  it("highlights protein only when it exceeds both fat and carbohydrates", () => {
     const chicken = snapshot.meals.find((meal) => meal.title === "Куриная грудка на пару");
-    const coleslaw = snapshot.meals.find((meal) => meal.title === "Салат коул-слоу");
     expect(chicken).toBeDefined();
-    expect(coleslaw).toBeDefined();
     expect(mealMacroHighlight(chicken as NonNullable<typeof chicken>)).toMatchObject({ highProtein: true, highFat: false });
-    expect(mealMacroHighlight(coleslaw as NonNullable<typeof coleslaw>)).toMatchObject({ highProtein: false, highFat: true });
+
+    const equalProteinAndFat = {
+      protein: { value: 20 }, fat: { value: 20 }, carbs: { value: 5 },
+    } as Parameters<typeof mealMacroHighlight>[0];
+    expect(mealMacroHighlight(equalProteinAndFat).highProtein).toBe(false);
+  });
+
+  it("highlights fat only above 30 g and above 1.5 times the protein", () => {
+    const macros = (protein: number, fat: number, carbs: number) => ({
+      protein: { value: protein }, fat: { value: fat }, carbs: { value: carbs },
+    }) as Parameters<typeof mealMacroHighlight>[0];
+
+    expect(mealMacroHighlight(macros(20, 30, 5)).highFat).toBe(false);
+    expect(mealMacroHighlight(macros(25, 36, 5)).highFat).toBe(false);
+    expect(mealMacroHighlight(macros(20, 31, 5)).highFat).toBe(true);
   });
 });
