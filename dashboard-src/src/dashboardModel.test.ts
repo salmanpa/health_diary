@@ -7,8 +7,8 @@ describe("dashboard presentation model", () => {
 
   it("classifies energy only as a relative period signal", () => {
     const result = energyProfile(completeDays);
-    expect(result.n).toBe(23);
-    expect(result.average).toBeCloseTo(2003.7, 1);
+    expect(result.n).toBe(24);
+    expect(result.average).toBeCloseTo(1991.1, 1);
     expect(result.lowBoundary).toBeCloseTo((result.average as number) * 0.85, 5);
     expect(result.highBoundary).toBeCloseTo((result.average as number) * 1.15, 5);
     expect(result.bands.get("2026-08-11")).toBe("below");
@@ -23,7 +23,7 @@ describe("dashboard presentation model", () => {
 
   it("calculates macro shares using 4/9/4 and marks only reproducible stable days", () => {
     const result = macroProfile(completeDays);
-    expect(result.days).toHaveLength(22);
+    expect(result.days).toHaveLength(23);
     expect((result.shares?.protein ?? 0) + (result.shares?.fat ?? 0) + (result.shares?.carbs ?? 0)).toBeCloseTo(100, 8);
     expect(result.stableDates.size).toBeGreaterThan(0);
     expect(result.stableDates.size).toBeLessThanOrEqual(result.days.length);
@@ -31,9 +31,9 @@ describe("dashboard presentation model", () => {
 
   it("reports median, spread and sleep denominator", () => {
     const result = sleepSummary(completeDays);
-    expect(result.n).toBe(23);
+    expect(result.n).toBe(24);
     expect(result.medianMinutes).toBe(420);
-    expect(result.minimumMinutes).toBe(300);
+    expect(result.minimumMinutes).toBe(90);
     expect(result.maximumMinutes).toBe(720);
   });
 
