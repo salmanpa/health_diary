@@ -332,6 +332,30 @@ FROM component_data c JOIN calendar_days d ON d.diary_date='2026-08-26'
 JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
 ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
 
+-- Компоненты незавершённого дневника 1 сентября. Неизвестные смешанные
+-- рецептуры сохранены целиком и не получают произвольный профиль.
+WITH c(meal_type,entry_food_name,component_name,w,fdc,confidence,notes) AS (VALUES
+('breakfast','Вода с лимоном и семенами чиа','Вода',250,NULL,'medium','Стакан сообщён пользователем; центрально принято 250 мл. Профиль не назначен.'),
+('breakfast','Вода с лимоном и семенами чиа','Лимон',10,NULL,'low','Количество не указано; центрально 10 г, диапазон 5–15 г.'),
+('breakfast','Вода с лимоном и семенами чиа','Семена чиа',5,NULL,'low','Одна чайная ложка без измеренной массы; центрально 5 г, диапазон 3–5 г.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Свежий овощной салат без заправки',200,NULL,'low','Масса и отсутствие заправки сообщены; состав и доли овощей неизвестны, поэтому компонент оставлен смешанным и несвязанным.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Жареные яйца',100,173423,'medium','Два яйца без массы; принята стандартная съедобная масса 100 г. Профиль USDA соответствует жареным целым яйцам.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Масло для яичницы',3,171413,'low','Количество и вид масла не сообщены; центрально учтено 3 г, сценарный диапазон 0–10 г.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Куриная грудка су-вид',40,171477,'medium','Масса и способ приготовления сообщены. Приготовленная запечённая грудка USDA — ближайшая замена для микронутриентов.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Фасоль консервированная, слитая',30,NULL,'low','Масса сообщена; предположена слитая съедобная масса. Вид фасоли, этикетка и рассол неизвестны.'),
+('breakfast','Овощной салат без заправки; яичница из 2 яиц; курица су-вид; консервированная фасоль; маленькое яблоко','Яблоко, съедобная часть',120,171688,'low','Маленький плод без массы; центрально 120 г, диапазон 90–140 г.'),
+('lunch','Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые','Бакинский салат',150,NULL,'low','Масса сообщена, но рецепт и заправка неизвестны; смешанный компонент оставлен несвязанным.'),
+('lunch','Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые','Филе трески на пару',70,174237,'low','Масса и способ приготовления сообщены. Приготовленный минтай USDA — ближайшая замена для микронутриентов другого нежирного finfish.'),
+('lunch','Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые','Рис отварной',160,169757,'medium','Масса сообщена и принята как готовая; профиль варёного длиннозёрного белого риса без соли.'),
+('lunch','Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые','Шампиньоны запечённые',110,169252,'low','Масса и запекание сообщены; варёные белые грибы USDA — ближайшая замена. Масло не указано и не включено в центральную массу.'),
+('snack','Банан и яблоко','Банан, съедобная часть',120,173944,'low','Один плод без массы; центрально 120 г, диапазон 90–150 г.'),
+('snack','Банан и яблоко','Яблоко, съедобная часть',150,171688,'low','Один плод без массы; центрально 150 г, диапазон 100–200 г.')
+) INSERT INTO nutrition_components(nutrition_entry_id,component_name,estimated_weight_g,reference_fdc_id,confidence,notes)
+SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.notes
+FROM c JOIN calendar_days d ON d.diary_date='2026-09-01'
+JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
+ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
+
 -- Компоненты дневника 29 августа. Неизвестные продукты и рецептуры сохранены
 -- явно и не получают произвольный профиль для микронутриентного анализа.
 WITH component_data (meal_type,entry_food_name,component_name,weight_g,fdc_id,confidence,notes) AS (
@@ -1095,4 +1119,43 @@ WITH c(meal_type,entry_food_name,component_name,w,fdc,confidence,notes) AS (VALU
 SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.notes
 FROM c JOIN calendar_days d ON d.diary_date='2026-08-31'
 JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
+ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
+
+-- Дополнительный перекус и ужин 1 сентября.
+WITH c(meal_type,entry_food_name,component_name,w,fdc,confidence,notes) AS (VALUES
+('snack','Банан (дополнительный перекус)','Банан, съедобная часть',120,173944,'low','Один дополнительный плод без массы; центрально 120 г, диапазон 90–150 г.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Макароны отварные',197,169751,'low','Доля рассчитана из 320 г готового блюда по сообщённому соотношению прошлого дня: 160/260 массы трёх основных компонентов. Округлено до 197 г.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Креветки',86,175180,'low','Доля рассчитана из 320 г готового блюда по соотношению прошлого дня: 70/260; округлено до 86 г. Профиль приготовленных креветок USDA — замена для микронутриентов.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Сыр',37,NULL,'low','Доля рассчитана из 320 г готового блюда по соотношению прошлого дня: 30/260; округлено до 37 г. Сорт и этикетка не указаны.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Манго, съедобная часть',250,NULL,'low','Один плод без массы; центрально 250 г, диапазон 180–350 г. Кожура и косточка исключены.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Вишня сушёная',4,NULL,'low','Две ягоды без массы; центрально 4 г. Наличие добавленного сахара неизвестно.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Макадамия',6,NULL,'low','Два ореха без массы; центрально 6 г.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Финик',10,NULL,'low','Один плод без массы; центрально 10 г.'),
+('dinner','Паста с креветками и сыром; манго; сушёная вишня; макадамия; финик; грецкие орехи','Грецкие орехи',8,NULL,'low','Два ореха истолкованы как два очищенных ядра общей массой около 8 г.')
+) INSERT INTO nutrition_components(nutrition_entry_id,component_name,estimated_weight_g,reference_fdc_id,confidence,notes)
+SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.notes
+FROM c JOIN calendar_days d ON d.diary_date='2026-09-01'
+JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
+ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
+
+-- Коррекция компонентов обеда 1 сентября по фотографиям: карточки дают
+-- точные БЖУ салата и трески, а видимый соус на грибах хранится отдельно.
+DELETE FROM nutrition_components
+WHERE nutrition_entry_id=(
+    SELECT n.id FROM nutrition_entries n JOIN calendar_days d ON d.id=n.calendar_day_id
+    WHERE d.diary_date='2026-09-01' AND n.meal_type='lunch'
+      AND n.food_name='Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые'
+)
+AND component_name IN ('Шампиньоны запечённые','Бакинский салат','Филе трески на пару');
+
+WITH c(component_name,w,fdc,confidence,notes) AS (VALUES
+('Бакинский салат',150,NULL,'high','Масса сообщена пользователем. На фото карточки читаются состав и точные значения на 100 г: 76,11 ккал, Б 1,19 г, Ж 6,06 г, У 4,19 г. Смешанный рецепт оставлен единым несвязанным компонентом; профиль микронутриентов не назначен.'),
+('Филе трески на пару',70,174237,'medium','Масса сообщена пользователем. На фото карточки читаются 80 ккал, Б 17 г, Ж 1 г, У 1,5 г на 100 г и состав с сухим овощным бульоном, овощной смесью, солью и перцем. Приготовленный минтай USDA — ближайшая замена только для микронутриентов другого нежирного finfish; натрий карточки неизвестен.'),
+('Шампиньоны запечённые',90,169252,'low','Из общей порции 110 г центрально отнесено 90 г к грибам. На фото видны целые шампиньоны с кремовым покрытием; профиль варёных белых грибов USDA — ближайшая замена.'),
+('Кремовый соус на шампиньонах',20,NULL,'low','Соус отчётливо виден на фото, но рецепт и масса неизвестны; центрально принято 20 г, сценарно 10–30 г. Оставлен отдельным несвязанным компонентом.')
+) INSERT INTO nutrition_components(nutrition_entry_id,component_name,estimated_weight_g,reference_fdc_id,confidence,notes)
+SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.notes
+FROM c JOIN calendar_days d ON d.diary_date='2026-09-01'
+JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type='lunch'
+ AND n.food_name='Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые'
 ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
