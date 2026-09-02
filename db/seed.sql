@@ -2507,6 +2507,37 @@ WITH b(base_type,notes) AS (VALUES
 SELECT d.id,b.base_type,b.notes FROM b JOIN calendar_days d ON d.diary_date='2026-09-02'
 ON CONFLICT(calendar_day_id,base_type) DO UPDATE SET notes=excluded.notes;
 
+-- Завершение 2 сентября: ужин и итоговая оценка пользователя.
+INSERT INTO nutrition_entries(
+    calendar_day_id,meal_type,food_name,weight_g,calories_kcal,
+    protein_g,fat_g,carbs_g,notes
+)
+SELECT id,'dinner',
+       'Тунец; зелёный салат с оливковым маслом; хлебцы; сухофрукты; орехи; киви; маракуйя',
+       587,902,26.5,39.9,122.8,
+       'Факты пользователя: 30 г консервированного тунца; 300 г салата из рукколы, шпината и сельдерея с оливковым маслом; 5 небольших хлебцев; 4 финика; 8 грецких орехов; 4 кураги; 5 сушёных вишен; по 1 киви и маракуйе. Допущения: в 300 г готового салата центрально 285 г зелени и 15 г масла; хлебцы 50 г; финики 40 г; восемь орехов истолкованы как восемь очищенных ядер, 32 г; курага 32 г; вишня 10 г; съедобная часть киви 75 г и маракуйи 18 г. Центральные оценки: тунец 32 ккал (Б 7,2, Ж 0,4, У 0); салат 195 ккал (Б 6, Ж 16, У 10); хлебцы 180 ккал (Б 5, Ж 2, У 35); финики 113 ккал; грецкие орехи 209 ккал; курага 77 ккал; вишня 33 ккал; киви 46 ккал; маракуйя 17 ккал. Общий диапазон 710–1110 ккал; Б 22–31 г, Ж 25–55 г, У 105–145 г. Проверка 4×Б+9×Ж+4×У даёт около 956 ккал; расхождение 6% объяснимо клетчаткой, округлением и разными справочными профилями. Основа массы: drained для тунца, as_eaten для остальных компонентов. Уверенность низкая: количество масла, масса хлебцев и трактовка количества грецких орехов. Оценка 8/10: есть рыба, много зелени, фрукты и орехи; сухофрукты и орехи вместе делают ужин энергоёмким.'
+FROM calendar_days AS d WHERE diary_date='2026-09-02'
+  AND NOT EXISTS (
+      SELECT 1 FROM nutrition_entries AS n
+      WHERE n.calendar_day_id=d.id AND n.meal_type='dinner'
+        AND n.food_name='Тунец; зелёный салат с оливковым маслом; хлебцы; сухофрукты; орехи; киви; маракуйя'
+  );
+
+INSERT INTO daily_ratings(calendar_day_id,rating,notes)
+SELECT id,3,'Итоговая оценка дня сообщена пользователем: 3 из 5.'
+FROM calendar_days WHERE diary_date='2026-09-02'
+ON CONFLICT(calendar_day_id) DO UPDATE SET rating=excluded.rating,notes=excluded.notes;
+
+UPDATE calendar_days
+SET status='complete',
+    notes='Записаны 7 часов сна и полный перечисленный рацион. День завершён после итоговой оценки пользователя 3 из 5.'
+WHERE diary_date='2026-09-02';
+
+UPDATE daily_food_bases
+SET notes='Рыба явно указана в сливочном рыбном супе и консервированном тунце; оба компонента относятся к finfish. Пельмени оставлены в категории «неизвестно»: начинка не указана.'
+WHERE calendar_day_id=(SELECT id FROM calendar_days WHERE diary_date='2026-09-02')
+  AND base_type='fish';
+
 -- Коррекция обеда 1 сентября по фотографиям блюда и читаемым карточкам.
 UPDATE nutrition_entries
 SET calories_kcal=453.2,

@@ -1179,3 +1179,69 @@ FROM c JOIN calendar_days d ON d.diary_date='2026-09-01'
 JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type='lunch'
  AND n.food_name='Бакинский салат; треска на пару; рис отварной; шампиньоны запечённые'
 ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
+
+-- Ужин 2 сентября: исчерпывающая компонентная модель. Центральная сумма
+-- съедобных масс (587 г) совпадает с nutrition_entries.weight_g.
+WITH c(component_name,w,fdc,confidence,food_group,notes) AS (VALUES
+('Консервированный тунец, слитый',30,173709,'medium','fish','Масса сообщена пользователем. Тунец light в воде USDA — ближайшая замена для микронутриентов; точная заливка и этикетка не указаны.'),
+('Руккола, шпинат и сельдерей',285,168462,'low','vegetables','Часть общей массы салата 300 г после центрально принятых 15 г масла. Соотношение трёх видов зелени неизвестно; шпинат USDA — ближайшая замена для микронутриентов всей смеси.'),
+('Оливковое масло в салате',15,171413,'low','unknown','Заправка указана без количества; центрально принята 1 столовая ложка (15 г), сценарный диапазон 5–25 г.'),
+('Небольшие хлебцы, 5 штук',50,172739,'low','grains','Пять небольших штук без массы и этикетки; центрально принято по 10 г. Ржаные хрустящие хлебцы USDA — ближайшая замена.'),
+('Финики, 4 штуки',40,NULL,'low','fruit','Сорт и масса не указаны; приняты небольшие финики по 10 г.'),
+('Грецкие орехи, 8 штук',32,NULL,'low','nuts','Количество истолковано как восемь очищенных ядер по 4 г; скорлупа исключена.'),
+('Курага, 4 штуки',32,NULL,'low','fruit','Размер и масса не указаны; центрально принято по 8 г.'),
+('Сушёная вишня, 5 штук',10,NULL,'low','fruit','Центрально принято по 2 г; наличие добавленного сахара неизвестно.'),
+('Киви, съедобная часть',75,168153,'low','fruit','Один плод без массы; центрально 75 г, кожура исключена.'),
+('Маракуйя, съедобная мякоть',18,NULL,'low','fruit','Один плод без массы; центрально приняты 18 г съедобной мякоти.')
+) INSERT INTO nutrition_components(
+    nutrition_entry_id,component_name,estimated_weight_g,reference_fdc_id,
+    confidence,food_group,notes
+)
+SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.food_group,c.notes
+FROM c JOIN calendar_days d ON d.diary_date='2026-09-02'
+JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type='dinner'
+ AND n.food_name='Тунец; зелёный салат с оливковым маслом; хлебцы; сухофрукты; орехи; киви; маракуйя'
+ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET
+ estimated_weight_g=excluded.estimated_weight_g,
+ reference_fdc_id=excluded.reference_fdc_id,
+ confidence=excluded.confidence,
+ food_group=excluded.food_group,
+ notes=excluded.notes;
+
+-- Пользовательская классификация каждого компонента применяется только к
+-- 1–2 сентября. Сначала явно ставим unknown, затем назначаем проверенные теги.
+UPDATE nutrition_components
+SET food_group='unknown'
+WHERE nutrition_entry_id IN (
+    SELECT n.id FROM nutrition_entries n JOIN calendar_days d ON d.id=n.calendar_day_id
+    WHERE d.diary_date IN ('2026-09-01','2026-09-02')
+);
+
+UPDATE nutrition_components
+SET food_group=CASE
+    WHEN component_name LIKE '%Курин%' THEN 'chicken'
+    WHEN (component_name LIKE '%Треск%' OR component_name LIKE '%треск%'
+      OR component_name LIKE '%Тун%' OR component_name LIKE '%тун%')
+      OR component_name='Сливочный рыбный суп' THEN 'fish'
+    WHEN component_name LIKE '%Кревет%' THEN 'seafood'
+    WHEN component_name LIKE '%Макарон%' OR component_name LIKE '%Рис%'
+      OR component_name LIKE '%хлебц%' THEN 'grains'
+    WHEN component_name LIKE '%Грецк%' OR component_name LIKE '%Макадам%' THEN 'nuts'
+    WHEN component_name LIKE '%Яблок%' OR component_name LIKE '%яблок%'
+      OR component_name LIKE '%Банан%' OR component_name LIKE '%банан%'
+      OR component_name LIKE '%Манго%' OR component_name LIKE '%манго%'
+      OR component_name LIKE '%Вишн%' OR component_name LIKE '%вишн%'
+      OR component_name LIKE '%Финик%' OR component_name LIKE '%Курага%'
+      OR component_name LIKE '%Киви%' OR component_name LIKE '%Маракуй%'
+      OR component_name LIKE '%Лимон%' THEN 'fruit'
+    WHEN component_name LIKE '%масло%' OR component_name LIKE '%Масло%' THEN 'unknown'
+    WHEN component_name LIKE '%салат%' OR component_name LIKE '%Салат%'
+      OR component_name LIKE '%овощ%' OR component_name LIKE '%Овощ%'
+      OR component_name LIKE '%Капуст%' OR component_name LIKE '%Шампиньон%'
+      OR component_name LIKE '%Руккол%' THEN 'vegetables'
+    ELSE food_group
+END
+WHERE nutrition_entry_id IN (
+    SELECT n.id FROM nutrition_entries n JOIN calendar_days d ON d.id=n.calendar_day_id
+    WHERE d.diary_date IN ('2026-09-01','2026-09-02')
+);

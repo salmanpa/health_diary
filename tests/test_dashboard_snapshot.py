@@ -48,9 +48,9 @@ class DashboardSnapshotTest(unittest.TestCase):
         counts = self.payload["quality"]["counts"]
         self.assertEqual(counts["calendarRows"], 26)
         self.assertEqual(counts["calendarDates"], 30)
-        self.assertEqual(counts["nutritionEntries"], 213)
-        self.assertEqual(counts["components"], 569)
-        self.assertEqual(counts["linkedComponents"], 330)
+        self.assertEqual(counts["nutritionEntries"], 214)
+        self.assertEqual(counts["components"], 579)
+        self.assertEqual(counts["linkedComponents"], 335)
         missing = [day["date"] for day in self.payload["days"] if day["status"] == "missing_date"]
         self.assertEqual(missing, ["2026-08-14", "2026-08-15", "2026-08-16", "2026-08-17"])
 
@@ -104,7 +104,12 @@ class DashboardSnapshotTest(unittest.TestCase):
     def test_structured_food_groups_are_exported(self):
         september_two = [meal for meal in self.payload["meals"] if meal["date"] == "2026-09-02"]
         groups = {component["foodGroup"] for meal in september_two for component in meal["components"]}
-        self.assertTrue({"vegetables", "fruit"}.issubset(groups))
+        self.assertTrue({"fish", "vegetables", "fruit", "grains", "nuts", "unknown"}.issubset(groups))
+
+    def test_every_component_on_september_one_and_two_has_a_food_group(self):
+        meals = [meal for meal in self.payload["meals"] if meal["date"] in {"2026-09-01", "2026-09-02"}]
+        self.assertTrue(meals)
+        self.assertTrue(all(component["foodGroup"] is not None for meal in meals for component in meal["components"]))
 
     def test_september_two_photo_corrections_reach_snapshot(self):
         september_two = [meal for meal in self.payload["meals"] if meal["date"] == "2026-09-02"]

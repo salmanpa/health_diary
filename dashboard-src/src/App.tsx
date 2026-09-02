@@ -254,15 +254,17 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
 function ProductGroupsPanel({ days }: { days: DiaryDay[] }) {
   const dates = new Set(days.map((day) => day.date));
   const groups = [
-    { id: "meat", icon: "🥩", label: "Мясо" }, { id: "fish", icon: "🐟", label: "Рыба" },
-    { id: "chicken", icon: "🍗", label: "Курица" }, { id: "vegetables", icon: "🥦", label: "Овощи" },
-    { id: "fruit", icon: "🍎", label: "Фрукты" },
+    { id: "meat", icon: "🥩", label: "Мясо" }, { id: "chicken", icon: "🍗", label: "Курица" },
+    { id: "fish", icon: "🐟", label: "Рыба" }, { id: "seafood", icon: "🦐", label: "Морепродукты" },
+    { id: "vegetables", icon: "🥦", label: "Овощи" }, { id: "fruit", icon: "🍎", label: "Фрукты" },
+    { id: "grains", icon: "🌾", label: "Крупы" }, { id: "nuts", icon: "🥜", label: "Орехи" },
+    { id: "unknown", icon: "❔", label: "Неизвестно" },
   ] as const;
   const completed = days.filter((day) => day.status === "complete").length;
   const components = snapshot.meals.filter((meal) => dates.has(meal.date)).flatMap((meal) => meal.components);
   const taggedMass = components.filter((item) => item.foodGroup).reduce((sum,item) => sum + (item.weightG ?? 0), 0);
   const totalMass = components.reduce((sum,item) => sum + (item.weightG ?? 0), 0);
-  return <section id="products" className="panel span-12 product-panel"><SectionHeading kicker="Основные продукты" title="Что появляется в рационе" description="Структурные теги считаются без поиска по названиям и заметкам. Оценка «достаточно / много / мало» появится только при ≥7 завершённых днях и хорошем покрытии; сейчас это описательная сводка, не диагноз." />
+  return <section id="products" className="panel span-12 product-panel"><SectionHeading kicker="Основные продукты" title="Что появляется в рационе" description="Каждый компонент 1–2 сентября отнесён к одной из восьми основных категорий либо к «неизвестно». Карточки показывают центральную массу и частоту по дням; оценка «достаточно / много / мало» появится только при ≥7 завершённых днях и хорошем покрытии." />
     <div className="product-grid">{groups.map((group) => {
       const mass = components.filter((item) => item.foodGroup === group.id).reduce((sum,item) => sum + (item.weightG ?? 0), 0);
       const dayCount = group.id === "meat" || group.id === "fish" || group.id === "chicken"
@@ -513,11 +515,11 @@ export function App() {
       <div className="dashboard-grid">
         {timeline}
         {nutrition}
+        {products}
         {recovery}
         {nutrients}
         {recommendations}
         {dailyTable}
-        {products}
       </div>
 
       <footer className="page-footer"><span><ShieldCheck size={15} /> Приватный статический снимок · без CDN, API и телеметрии</span><span>Контракт {snapshot.meta.contractVersion} · UI-правила {PRESENTATION_RULES.version} · источник {snapshot.meta.sourceHash.slice(0, 8)}</span></footer>
