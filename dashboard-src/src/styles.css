@@ -133,6 +133,7 @@ select { width: 100%; min-height: 44px; padding: 0 28px 0 9px; border: 1px solid
 .recommendation-grid article { min-height: 145px; padding: 14px; display: flex; gap: 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-soft); }
 .recommendation-icon { flex: 0 0 auto; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: color-mix(in srgb,var(--green) 11%,transparent); color: var(--green); }
 .recommendation-grid h3 { margin: 2px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }.recommendation-grid strong { display: block; font-size: 12px; line-height: 1.4; }.recommendation-grid p { margin: 8px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.product-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }.product-grid article { padding:16px; display:flex; gap:11px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); }.product-icon { font-size:28px; line-height:1; }.product-grid h3 { margin:0 0 7px; font-size:12px; }.product-grid strong { font-size:11px; }.product-grid p,.coverage-line,.plate-note { color:var(--muted); font-size:9px; line-height:1.45; }.product-grid p { margin:6px 0 0; }.coverage-line { margin:12px 0 0; }
 
 .table-disclosure { margin-top: 12px; border-top: 1px solid var(--line); }
 .table-disclosure > summary { min-height: 46px; display: flex; align-items: center; color: var(--green); font-size: 10px; font-weight: 800; cursor: pointer; }
@@ -160,6 +161,7 @@ tbody th { font-weight: 700; }
 .meal-macros span.fat-highlight { border: 1px solid #efaaa5; background: #fde5e3; color: #9b3833; font-weight: 850; }
 .meal-macros span.carbs-highlight { border: 1px solid #aeb9ec; background: #e8ebff; color: #35469b; font-weight: 850; }
 .component-list { margin: 11px 0 0; padding: 9px 0 0; list-style: none; border-top: 1px solid var(--line); }.component-list li { padding: 5px 0; display: flex; justify-content: space-between; gap: 12px; font-size: 9px; }.component-list li span { display: flex; flex-direction: column; gap: 2px; }.component-list small { color: var(--muted); }.two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.food-plate-layout { display:flex; align-items:center; gap:24px; padding:16px; border-radius:12px; background:var(--panel-soft); }.food-plate { flex:0 0 190px; width:190px; aspect-ratio:1; display:grid; place-items:center; border:10px solid var(--panel); border-radius:50%; box-shadow:0 2px 12px rgba(0,0,0,.12); }.food-plate > div { width:66px; aspect-ratio:1; display:grid; place-items:center; border-radius:50%; background:var(--panel); font-size:13px; font-weight:850; }.food-plate small { display:block; color:var(--muted); font-size:8px; }.plate-legend { flex:1; margin:0; padding:0; list-style:none; }.plate-legend li { padding:5px 0; display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:8px; font-size:9px; }.plate-legend i { width:9px; height:9px; border-radius:3px; }.plate-note { margin:9px 0 0; }
 .fact-list { margin: 0; }.fact-list > div { padding: 7px 0; display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); font-size: 9px; }.fact-list dt { color: var(--muted); }.fact-list dd { margin: 0; text-align: right; }.workout-fact + .workout-fact { margin-top: 10px; }.nutrient-drawer-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }.nutrient-drawer-grid > div { padding: 10px; display: flex; flex-direction: column; gap: 3px; border-radius: 7px; background: var(--panel-soft); }.nutrient-drawer-grid span,.nutrient-drawer-grid small { color: var(--muted); font-size: 7px; }.nutrient-drawer-grid strong { font-size: 10px; }.empty-inline,.empty-state { color: var(--muted); font-size: 9px; }.empty-state { padding: 24px; text-align: center; border-radius: 9px; background: var(--panel-soft); }
 .mobile-nav { display: none; }
 @keyframes overlay-in { from { opacity: 0; } }
@@ -168,6 +170,7 @@ tbody th { font-weight: 700; }
 @media (max-width: 1180px) {
   .kpi-grid { grid-template-columns: repeat(3,1fr); }
   .macro-layout { grid-template-columns: 1fr; }
+  .product-grid { grid-template-columns:repeat(3,1fr); }
   .macro-donut-card { display:grid; grid-template-columns:180px 1fr; align-items:center; }.macro-donut-card h3 { grid-column:1/-1; }.chart-donut { min-height:270px; }
   .recommendation-grid { grid-template-columns:repeat(2,1fr); }
   .nutrient-layout { grid-template-columns:170px 190px minmax(0,1fr); }

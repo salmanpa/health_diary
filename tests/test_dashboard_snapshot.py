@@ -46,11 +46,11 @@ class DashboardSnapshotTest(unittest.TestCase):
 
     def test_idempotent_source_counts_and_calendar_gaps(self):
         counts = self.payload["quality"]["counts"]
-        self.assertEqual(counts["calendarRows"], 24)
-        self.assertEqual(counts["calendarDates"], 28)
-        self.assertEqual(counts["nutritionEntries"], 200)
-        self.assertEqual(counts["components"], 533)
-        self.assertEqual(counts["linkedComponents"], 316)
+        self.assertEqual(counts["calendarRows"], 26)
+        self.assertEqual(counts["calendarDates"], 30)
+        self.assertEqual(counts["nutritionEntries"], 213)
+        self.assertEqual(counts["components"], 569)
+        self.assertEqual(counts["linkedComponents"], 330)
         missing = [day["date"] for day in self.payload["days"] if day["status"] == "missing_date"]
         self.assertEqual(missing, ["2026-08-14", "2026-08-15", "2026-08-16", "2026-08-17"])
 
@@ -72,7 +72,7 @@ class DashboardSnapshotTest(unittest.TestCase):
         self.assertEqual(august_four["protein"]["completeness"], "known_minimum")
 
     def test_per_nutrient_coverage_and_conservative_gate(self):
-        self.assertEqual(len(self.payload["nutrients"]), 28 * 11)
+        self.assertEqual(len(self.payload["nutrients"]), 30 * 11)
         covered = [item for item in self.payload["nutrients"] if item["metric"]["value"] is not None]
         self.assertTrue(covered)
         for item in covered:
@@ -100,6 +100,18 @@ class DashboardSnapshotTest(unittest.TestCase):
             json.dumps(self.payload, ensure_ascii=False, sort_keys=True),
             json.dumps(second, ensure_ascii=False, sort_keys=True),
         )
+
+    def test_structured_food_groups_are_exported(self):
+        september_two = [meal for meal in self.payload["meals"] if meal["date"] == "2026-09-02"]
+        groups = {component["foodGroup"] for meal in september_two for component in meal["components"]}
+        self.assertTrue({"vegetables", "fruit"}.issubset(groups))
+
+    def test_september_two_photo_corrections_reach_snapshot(self):
+        september_two = [meal for meal in self.payload["meals"] if meal["date"] == "2026-09-02"]
+        by_title = {meal["title"]: meal for meal in september_two}
+        self.assertEqual(by_title["Салат из квашеной капусты и салата «Венеция»"]["energy"]["value"], 203.2)
+        self.assertEqual(by_title["Сливочный рыбный суп"]["protein"]["value"], 10.7)
+        self.assertEqual(by_title["Пельмени, 10 штук"]["weightG"], 200.0)
 
 
 if __name__ == "__main__":

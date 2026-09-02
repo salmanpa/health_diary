@@ -192,6 +192,7 @@ def build_payload(
             f"""
             SELECT c.id, c.nutrition_entry_id, d.diary_date, c.component_name,
                    c.estimated_weight_g, c.reference_fdc_id, c.confidence,
+                   c.food_group,
                    p.food_name AS profile_name,
                    {profile_select}
             FROM nutrition_components AS c
@@ -305,6 +306,7 @@ def build_payload(
                 "profileName": component["profile_name"],
                 "referenceId": component["reference_fdc_id"],
                 "linked": component["reference_fdc_id"] is not None,
+                "foodGroup": component["food_group"],
             }
             for component in components
         ]

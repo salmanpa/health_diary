@@ -18,8 +18,8 @@ import { snapshot } from "./snapshot";
 describe("Dashboard v2", () => {
   it("validates and loads the private v2 snapshot", () => {
     expect(snapshot.meta.contractVersion).toBe("2.0");
-    expect(snapshot.meta.latestSourceDate).toBe("2026-08-31");
-    expect(snapshot.days).toHaveLength(28);
+    expect(snapshot.meta.latestSourceDate).toBe("2026-09-02");
+    expect(snapshot.days).toHaveLength(30);
   });
 
   it("provides semantic navigation, filters and table alternatives", () => {
@@ -34,6 +34,7 @@ describe("Dashboard v2", () => {
     expect(screen.getByRole("heading", { name: "Энергия по дням" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Макронутриенты без пересечения линий" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Что видно и что улучшить следующим" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Что появляется в рационе" })).toBeInTheDocument();
     expect(screen.queryByText("Графики в прежнем виде")).not.toBeInTheDocument();
     expect(screen.queryByText("Линейный вид из предыдущей версии")).not.toBeInTheDocument();
     expect(screen.queryByText("Где аналитика сильна, а где осторожна")).not.toBeInTheDocument();

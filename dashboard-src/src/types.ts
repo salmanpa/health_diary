@@ -65,6 +65,7 @@ export interface MealComponent {
   profileName: string | null;
   referenceId: number | null;
   linked: boolean;
+  foodGroup: "meat" | "chicken" | "fish" | "vegetables" | "fruit" | "other" | null;
 }
 
 export interface MealEvent {
