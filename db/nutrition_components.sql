@@ -332,6 +332,26 @@ FROM component_data c JOIN calendar_days d ON d.diary_date='2026-08-26'
 JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
 ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,notes=excluded.notes;
 
+-- Компоненты рациона 2 сентября. food_group — структурный тег для аналитики;
+-- неизвестные смешанные рецептуры не классифицируются по догадке.
+WITH c(meal_type,entry_food_name,component_name,w,fdc,confidence,food_group,notes) AS (VALUES
+('breakfast','Вода с лимоном и семенами чиа','Вода',250,NULL,'high','other','Стакан; центрально 250 мл. Подтверждённые 0 ккал.'),
+('breakfast','Вода с лимоном и семенами чиа','Лимон',10,NULL,'low','fruit','Количество не указано; центрально 10 г, диапазон 5–15 г.'),
+('breakfast','Вода с лимоном и семенами чиа','Семена чиа',5,NULL,'low','other','Одна чайная ложка; центрально 5 г, диапазон 3–7 г.'),
+('breakfast','Овощной салат без заправки с мини-моцареллой','Свежие овощи и листья',150,NULL,'low','vegetables','Остаток после центральной оценки 30 г моцареллы; состав известен, доли овощей неизвестны.'),
+('breakfast','Овощной салат без заправки с мини-моцареллой','Мини-моцарелла',30,170845,'low','other','Центральная доля в салате; диапазон 20–45 г. Профиль USDA mozzarella, whole milk — замена.'),
+('breakfast','Скрембл со шпинатом и томатами','Скрембл со шпинатом и томатами по карточке',200,NULL,'high','other','Масса и БЖУ на 100 г сообщены; неизвестный рецепт оставлен единым исчерпывающим компонентом.'),
+('lunch','Салат из квашеной капусты и салата «Венеция»','Квашеная капуста',30,NULL,'medium','vegetables','Масса 30 г уточнена пользователем; профиль не назначен, поэтому микронутриенты не рассчитаны.'),
+('lunch','Салат из квашеной капусты и салата «Венеция»','Салат «Венеция»',170,NULL,'high','vegetables','Остаток от общей массы 200 г после сообщённых 30 г капусты. Точные БЖУ и состав читаются на карточке; смешанный рецепт оставлен единым компонентом.'),
+('lunch','Сливочный рыбный суп','Сливочный рыбный суп',230,NULL,'low',NULL,'Рецепт и доля рыбы неизвестны; смешанное блюдо оставлено несвязанным и без продуктового тега.'),
+('lunch','Пельмени, 10 штук','Пельмени',200,NULL,'low',NULL,'На фото посчитано 10 крупных готовых штук без соуса; центрально 200 г, диапазон 170–230 г. Начинка и рецепт неизвестны, поэтому продуктовый тег не назначен.'),
+('snack','Яблоко','Яблоко, съедобная часть',150,171688,'low','fruit','Один плод; центрально 150 г, диапазон 120–190 г. Профиль USDA, сырой плод с кожурой.')
+) INSERT INTO nutrition_components(nutrition_entry_id,component_name,estimated_weight_g,reference_fdc_id,confidence,food_group,notes)
+SELECT n.id,c.component_name,c.w,c.fdc,c.confidence,c.food_group,c.notes FROM c
+JOIN calendar_days d ON d.diary_date='2026-09-02'
+JOIN nutrition_entries n ON n.calendar_day_id=d.id AND n.meal_type=c.meal_type AND n.food_name=c.entry_food_name
+ON CONFLICT(nutrition_entry_id,component_name) DO UPDATE SET estimated_weight_g=excluded.estimated_weight_g,reference_fdc_id=excluded.reference_fdc_id,confidence=excluded.confidence,food_group=excluded.food_group,notes=excluded.notes;
+
 -- Компоненты незавершённого дневника 1 сентября. Неизвестные смешанные
 -- рецептуры сохранены целиком и не получают произвольный профиль.
 WITH c(meal_type,entry_food_name,component_name,w,fdc,confidence,notes) AS (VALUES

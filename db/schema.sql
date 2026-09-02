@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS nutrition_components (
         REFERENCES food_reference_profiles(fdc_id),
     confidence TEXT NOT NULL
         CHECK (confidence IN ('high', 'medium', 'low')),
+    food_group TEXT
+        CHECK (food_group IS NULL OR food_group IN ('meat', 'chicken', 'fish', 'vegetables', 'fruit', 'other')),
     notes TEXT,
     UNIQUE (nutrition_entry_id, component_name)
 );

@@ -175,6 +175,18 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
   const workouts = snapshot.workouts.filter((item) => item.date === date);
   const sleep = snapshot.sleep.find((item) => item.date === date) ?? null;
   const nutrients = snapshot.nutrients.filter((item) => item.date === date && item.metric.value !== null);
+  const plateParts = meals.flatMap((meal) => meal.components).reduce<Record<string, number>>((sum, component) => {
+    const key = component.foodGroup ?? "unclassified";
+    sum[key] = (sum[key] ?? 0) + (component.weightG ?? 0);
+    return sum;
+  }, {});
+  const plateTotal = Object.values(plateParts).reduce((sum, value) => sum + value, 0);
+  const plateColors: Record<string, string> = { vegetables: "#63a56f", fruit: "#e8a54b", meat: "#b9675d", chicken: "#d4a84f", fish: "#5996b2", other: "#9d88b5", unclassified: "#c9cec9" };
+  let plateOffset = 0;
+  const plateGradient = Object.entries(plateParts).map(([key, value]) => {
+    const start = plateOffset; plateOffset += plateTotal ? value / plateTotal * 100 : 0;
+    return `${plateColors[key]} ${start}% ${plateOffset}%`;
+  }).join(", ");
 
   return <Dialog.Root open={Boolean(date)} onOpenChange={onOpenChange}>
     <Dialog.Portal>
@@ -217,6 +229,11 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
               })}</div>
             </section>)}</div> : <p className="empty-state">Питание за этот день не записано.</p>}
           </section>
+          {plateTotal > 0 ? <section className="drawer-section food-plate-section"><h3><ChartPie size={18} /> Тарелка дня <span>по массе компонентов</span></h3>
+            <div className="food-plate-layout"><div className="food-plate" role="img" aria-label={`Соотношение записанных компонентов по массе: ${Object.entries(plateParts).map(([key,value]) => `${key} ${Math.round(value / plateTotal * 100)}%`).join(", ")}`} style={{ background: `conic-gradient(${plateGradient})` }}><div>100%<small>{formatNumber(plateTotal)} г</small></div></div>
+            <ul className="plate-legend">{Object.entries(plateParts).map(([key,value]) => <li key={key}><i style={{background:plateColors[key]}} /><span>{{vegetables:"Овощи",fruit:"Фрукты",meat:"Мясо",chicken:"Курица",fish:"Рыба",other:"Другое",unclassified:"Не классифицировано"}[key]}</span><strong>{Math.round(value / plateTotal * 100)}%</strong></li>)}</ul></div>
+            <p className="plate-note">Это состав всех записанных компонентов дня по съедобной массе, а не норматив «здоровой тарелки». Жидкость и смешанные блюда могут визуально доминировать.</p>
+          </section> : null}
           <section className="drawer-section two-columns"><div><h3><MoonStar size={18} /> Сон</h3>
             {sleep ? <dl className="fact-list"><div><dt>Длительность</dt><dd>{formatNumber((sleep.durationMinutes ?? 0) / 60, 1)} ч</dd></div><div><dt>Интервал</dt><dd>{sleep.startedAt ?? "—"} — {sleep.endedAt ?? "—"}</dd></div><div><dt>Качество</dt><dd>{sleep.quality ?? "—"}</dd></div></dl> : <p className="empty-inline">Нет записи</p>}
           </div><div><h3><Dumbbell size={18} /> Тренировки</h3>
@@ -232,6 +249,28 @@ function DayDrawer({ date, onOpenChange }: { date: string | null; onOpenChange: 
       </Dialog.Content>
     </Dialog.Portal>
   </Dialog.Root>;
+}
+
+function ProductGroupsPanel({ days }: { days: DiaryDay[] }) {
+  const dates = new Set(days.map((day) => day.date));
+  const groups = [
+    { id: "meat", icon: "🥩", label: "Мясо" }, { id: "fish", icon: "🐟", label: "Рыба" },
+    { id: "chicken", icon: "🍗", label: "Курица" }, { id: "vegetables", icon: "🥦", label: "Овощи" },
+    { id: "fruit", icon: "🍎", label: "Фрукты" },
+  ] as const;
+  const completed = days.filter((day) => day.status === "complete").length;
+  const components = snapshot.meals.filter((meal) => dates.has(meal.date)).flatMap((meal) => meal.components);
+  const taggedMass = components.filter((item) => item.foodGroup).reduce((sum,item) => sum + (item.weightG ?? 0), 0);
+  const totalMass = components.reduce((sum,item) => sum + (item.weightG ?? 0), 0);
+  return <section id="products" className="panel span-12 product-panel"><SectionHeading kicker="Основные продукты" title="Что появляется в рационе" description="Структурные теги считаются без поиска по названиям и заметкам. Оценка «достаточно / много / мало» появится только при ≥7 завершённых днях и хорошем покрытии; сейчас это описательная сводка, не диагноз." />
+    <div className="product-grid">{groups.map((group) => {
+      const mass = components.filter((item) => item.foodGroup === group.id).reduce((sum,item) => sum + (item.weightG ?? 0), 0);
+      const dayCount = group.id === "meat" || group.id === "fish" || group.id === "chicken"
+        ? days.filter((day) => day.foodBases.includes(group.id)).length
+        : new Set(snapshot.meals.filter((meal) => dates.has(meal.date) && meal.components.some((item) => item.foodGroup === group.id)).map((meal) => meal.date)).size;
+      return <article key={group.id}><span className="product-icon" aria-hidden="true">{group.icon}</span><div><h3>{group.label}</h3><strong>{mass ? `${formatNumber(mass)} г` : "масса не размечена"}</strong><p>{dayCount}/{days.length} дней · <b>{completed < 7 || !totalMass || taggedMass / totalMass < .8 ? "данных мало для оценки" : "описательная частота"}</b></p></div></article>;
+    })}</div><p className="coverage-line">Покрытие структурными тегами: {totalMass ? formatNumber(taggedMass / totalMass * 100) : "—"}% массы · завершено {completed}/{days.length} дней.</p>
+  </section>;
 }
 
 function EnergyPanel({ days, profile, openDay }: { days: DiaryDay[]; profile: EnergyProfile; openDay: (date: string) => void }) {
@@ -442,6 +481,7 @@ export function App() {
   const recommendations = <RecommendationPanel key="summary" energy={energyStats} macros={macroStats} sleep={sleepStats} training={trainingStats} days={visibleDays} />;
   const nutrients = <NutrientPanel key="nutrients" dates={window.dates} allowedDates={includedDateSet} />;
   const dailyTable = <DailyTable key="days" days={chartDays} openDay={setSelectedDate} />;
+  const products = <ProductGroupsPanel key="products" days={chartDays} />;
 
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
@@ -477,6 +517,7 @@ export function App() {
         {nutrients}
         {recommendations}
         {dailyTable}
+        {products}
       </div>
 
       <footer className="page-footer"><span><ShieldCheck size={15} /> Приватный статический снимок · без CDN, API и телеметрии</span><span>Контракт {snapshot.meta.contractVersion} · UI-правила {PRESENTATION_RULES.version} · источник {snapshot.meta.sourceHash.slice(0, 8)}</span></footer>
